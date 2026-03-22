@@ -110,10 +110,10 @@ Set environment variables in the task definition or App Runner configuration.
 
 1. Create free cluster at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
 2. Create database user
-3. Whitelist IP (or allow all: `0.0.0.0/0`)
+3. Whitelist IP 
 4. Get connection string and set in `.env`:
    ```
-   MONGODB_URI=MONGODB_URI=your_mongodb_uri_here
+   MONGODB_URI=your_mongodb_uri_here
    ```
 
 ---
