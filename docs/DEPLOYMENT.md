@@ -113,7 +113,7 @@ Set environment variables in the task definition or App Runner configuration.
 3. Whitelist IP (or allow all: `0.0.0.0/0`)
 4. Get connection string and set in `.env`:
    ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/maintenx?retryWrites=true&w=majority
+   MONGODB_URI=MONGODB_URI=your_mongodb_uri_here
    ```
 
 ---
