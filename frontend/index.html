@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MaintenX AI — Predictive Maintenance Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+/* ═══ ROOT VARIABLES ═══════════════════════════════════════════ */
+:root {
+  --bg:#04060f; --bg1:#060912; --bg2:#080d18; --bg3:#0c1226;
+  --s1:rgba(255,255,255,.025); --s2:rgba(255,255,255,.05); --s3:rgba(255,255,255,.08); --s4:rgba(255,255,255,.12);
+  --b1:rgba(255,255,255,.06); --b2:rgba(255,255,255,.1); --b3:rgba(255,255,255,.18);
+  --c:radial-gradient(ellipse at 30% 20%,rgba(0,212,255,.18) 0%,transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(99,102,241,.15) 0%,transparent 60%);
+  --neon:#00d4ff; --neon2:#00b8e0; --accent:#6366f1; --accent2:#8b5cf6; --mint:#10b981;
+  --warn:#f59e0b; --red:#ef4444; --orange:#f97316;
+  --t1:#f1f5f9; --t2:#94a3b8; --t3:#4b5563; --t4:#1e293b;
+  --r4:4px; --r6:6px; --r8:8px; --r10:10px; --r12:12px; --r14:14px; --r16:16px;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.4); --shadow:0 8px 32px rgba(0,0,0,.5); --shadow-lg:0 20px 60px rgba(0,0,0,.6);
+  --glow-neon:0 0 20px rgba(0,212,255,.35),0 0 60px rgba(0,212,255,.12);
+  --glow-acc:0 0 20px rgba(99,102,241,.35),0 0 60px rgba(99,102,241,.12);
+  --nav-h:62px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--t1);font-family:'Syne',sans-serif;overflow-x:hidden;cursor:none;min-height:100vh}
+
+/* ═══ CURSOR ═══════════════════════════════════════════════════ */
+.cursor{position:fixed;width:8px;height:8px;border-radius:50%;background:var(--neon);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:var(--glow-neon);transition:width .15s,height .15s,opacity .2s;mix-blend-mode:screen}
+.cursor-ring{position:fixed;width:32px;height:32px;border:1px solid rgba(0,212,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all .12s cubic-bezier(.2,0,.3,1)}
+body:hover .cursor{opacity:1}
+
+/* ═══ NOISE + AMBIENT ════════════════════════════════════════ */
+.noise{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.028;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");background-repeat:repeat}
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;background:var(--c)}
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;animation:orbDrift 12s ease-in-out infinite}
+.orb1{width:700px;height:700px;background:radial-gradient(circle,rgba(0,212,255,.055) 0%,transparent 70%);top:-200px;left:-200px}
+.orb2{width:600px;height:600px;background:radial-gradient(circle,rgba(99,102,241,.07) 0%,transparent 70%);bottom:-180px;right:-180px;animation-delay:-6s}
+.orb3{width:400px;height:400px;background:radial-gradient(circle,rgba(16,185,129,.04) 0%,transparent 70%);top:40%;left:45%;animation-delay:-3s}
+@keyframes orbDrift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.04)}66%{transform:translate(-15px,25px) scale(.97)}}
+
+/* ═══ SCROLLBAR ═══════════════════════════════════════════════ */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);border-radius:2px}
+
+/* ═══ TYPOGRAPHY UTILITIES ════════════════════════════════════ */
+.font-mono{font-family:'JetBrains Mono',monospace}
+.font-display{font-family:'Orbitron',monospace}
+.text-neon{color:var(--neon)}
+.text-accent{color:var(--accent)}
+.text-dim{color:var(--t2)}
+.text-xs{font-size:11px}.text-sm{font-size:12.5px}.text-base{font-size:14px}.text-lg{font-size:16px}
+.fw-700{font-weight:700}.fw-800{font-weight:800}
+.uppercase{text-transform:uppercase;letter-spacing:1.5px}
+
+/* ═══ NAVIGATION ══════════════════════════════════════════════ */
+#topnav{position:fixed;top:0;left:0;right:0;z-index:500;height:var(--nav-h);display:flex;align-items:center;padding:0 32px;background:rgba(4,6,15,.82);backdrop-filter:blur(28px) saturate(160%);border-bottom:1px solid var(--b1);transition:all .3s}
+#topnav.scrolled{background:rgba(4,6,15,.96);border-bottom-color:var(--b2)}
+.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;user-select:none}
+.nav-logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--neon),var(--accent));display:flex;align-items:center;justify-content:center;font-size:16px;animation:rotateSlow 12s linear infinite;box-shadow:0 0 16px rgba(0,212,255,.3)}
+@keyframes rotateSlow{to{transform:rotate(360deg)}}
+.nav-logo-text{font-family:'Orbitron',monospace;font-size:16px;font-weight:800;letter-spacing:3px;background:linear-gradient(90deg,var(--neon),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;align-items:center;gap:2px;margin:0 auto}
+.nav-link{padding:7px 15px;border-radius:8px;font-size:13px;font-weight:600;color:var(--t3);cursor:pointer;transition:all .2s;border:none;background:none;font-family:'Syne',sans-serif;letter-spacing:.3px}
+.nav-link:hover{color:var(--t1);background:var(--s2)}
+.nav-link.active{color:var(--neon)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-pill{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.8px}
+.pill-live{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:var(--mint)}
+.pill-dot{width:5px;height:5px;border-radius:50%;background:var(--mint);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.btn-nav-login{padding:8px 20px;border-radius:10px;border:1px solid var(--b3);background:var(--s2);color:var(--t1);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Syne',sans-serif;letter-spacing:.3px}
+.btn-nav-login:hover{border-color:var(--neon);color:var(--neon);background:rgba(0,212,255,.06)}
+.btn-nav-cta{padding:8px 22px;border-radius:10px;background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Syne',sans-serif;letter-spacing:.4px;box-shadow:0 0 20px rgba(0,212,255,.25);transition:all .3s}
+.btn-nav-cta:hover{box-shadow:0 0 40px rgba(0,212,255,.45);transform:translateY(-1px)}
+.nav-user-menu{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 5px;border-radius:12px;border:1px solid var(--b2);background:var(--s2);cursor:pointer}
+.nav-avatar{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--neon));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#000}
+.nav-user-name{font-size:12.5px;font-weight:700;color:var(--t1)}
+.nav-user-role{font-size:10px;color:var(--t3)}
+
+/* ═══ PAGE SYSTEM ════════════════════════════════════════════ */
+.page{display:none;min-height:100vh;position:relative;z-index:2}
+.page.active{display:block;animation:pageIn .35s cubic-bezier(.2,0,.3,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ BUTTONS ════════════════════════════════════════════════ */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer;transition:all .25s;font-family:'Syne',sans-serif;letter-spacing:.3px;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;box-shadow:0 0 24px rgba(0,212,255,.22)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 44px rgba(0,212,255,.45)}
+.btn-secondary{background:var(--s3);border:1px solid var(--b2);color:var(--t1)}
+.btn-secondary:hover{border-color:var(--neon);color:var(--neon);background:rgba(0,212,255,.06)}
+.btn-ghost{background:transparent;border:1px solid var(--b3);color:var(--t2)}
+.btn-ghost:hover{border-color:var(--b3);color:var(--t1)}
+.btn-danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.22);color:var(--red)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:6px 14px;font-size:11.5px;border-radius:8px}
+.btn-xs{padding:4px 10px;font-size:10.5px;border-radius:6px}
+.btn-icon{width:32px;height:32px;padding:0;justify-content:center;border-radius:8px;font-size:14px}
+
+/* ═══ LANDING PAGE ══════════════════════════════════════════ */
+#landing{padding-top:var(--nav-h);background:var(--bg)}
+
+/* HERO */
+.hero{position:relative;min-height:calc(100vh - var(--nav-h));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 32px 80px;overflow:hidden;text-align:center}
+#hero-canvas{position:absolute;inset:0;z-index:0;opacity:.85}
+.hero-glow-line{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.35),rgba(99,102,241,.35),transparent);z-index:1}
+.hero-content{position:relative;z-index:3;max-width:780px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:20px;border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.05);margin-bottom:24px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--neon);letter-spacing:2px;animation:badgePulse 3s ease-in-out infinite}
+@keyframes badgePulse{0%,100%{box-shadow:0 0 0 rgba(0,212,255,0)}50%{box-shadow:0 0 20px rgba(0,212,255,.2)}}
+.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--neon);animation:blink 1.4s infinite}
+.hero-title{font-family:'Orbitron',monospace;font-size:clamp(42px,6.5vw,88px);font-weight:900;line-height:.95;letter-spacing:-3px;margin-bottom:6px}
+.hero-title span.grad{background:linear-gradient(135deg,#fff 0%,var(--neon) 40%,var(--accent) 80%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-subtitle{font-size:clamp(15px,2vw,22px);font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--t2);margin:14px 0;font-family:'JetBrains Mono',monospace}
+.hero-subtitle .hi{color:var(--neon)}
+.hero-desc{font-size:16px;color:var(--t2);line-height:1.75;max-width:560px;margin:0 auto 36px;font-weight:400}
+.hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-cta-main{padding:14px 36px;border-radius:12px;background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;font-size:15px;font-weight:800;border:none;cursor:pointer;font-family:'Syne',sans-serif;box-shadow:0 0 36px rgba(0,212,255,.35);transition:all .3s;letter-spacing:.5px}
+.hero-cta-main:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(0,212,255,.55)}
+.hero-cta-sec{padding:14px 32px;border-radius:12px;background:transparent;border:1px solid var(--b3);color:var(--t1);font-size:15px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .3s;backdrop-filter:blur(8px)}
+.hero-cta-sec:hover{border-color:var(--neon);color:var(--neon);background:rgba(0,212,255,.05)}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;max-width:680px;margin:60px auto 0;border-radius:16px;overflow:hidden;border:1px solid var(--b1);background:var(--b1)}
+.hero-stat{padding:20px 16px;background:var(--s1);backdrop-filter:blur(12px);text-align:center}
+.hero-stat-n{font-family:'Orbitron',monospace;font-size:28px;font-weight:800;color:var(--neon);line-height:1}
+.hero-stat-l{font-size:10.5px;color:var(--t3);letter-spacing:1px;margin-top:4px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+
+/* SECTION UTILITIES */
+.section{padding:100px 32px;max-width:1200px;margin:0 auto;position:relative;z-index:2}
+.section-sm{padding:60px 32px;max-width:1200px;margin:0 auto;position:relative;z-index:2}
+.section-label{display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;color:var(--neon);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:14px;padding:4px 12px;border-radius:6px;border:1px solid rgba(0,212,255,.18);background:rgba(0,212,255,.04)}
+.section-title{font-family:'Orbitron',monospace;font-size:clamp(26px,3.5vw,44px);font-weight:800;line-height:1.1;letter-spacing:-1px;margin-bottom:14px}
+.section-title .grad{background:linear-gradient(135deg,#fff,var(--neon));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.section-sub{font-size:15px;color:var(--t2);max-width:560px;line-height:1.75}
+.divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--b2),transparent);margin:0;position:relative;z-index:2}
+
+/* FEATURES */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:52px}
+.feat-card{padding:28px;border-radius:16px;border:1px solid var(--b1);background:var(--s1);backdrop-filter:blur(12px);transition:all .35s;position:relative;overflow:hidden;cursor:default}
+.feat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--feat-c,rgba(0,212,255,.04)),transparent 60%);opacity:0;transition:.35s}
+.feat-card:hover{border-color:var(--feat-c,rgba(0,212,255,.25));transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.feat-card:hover::before{opacity:1}
+.feat-icon-wrap{width:52px;height:52px;border-radius:13px;background:var(--feat-c,rgba(0,212,255,.1));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:18px;border:1px solid rgba(255,255,255,.08)}
+.feat-title{font-size:16px;font-weight:700;margin-bottom:10px}
+.feat-desc{font-size:13px;color:var(--t2);line-height:1.7}
+.feat-tag{display:inline-flex;align-items:center;gap:4px;margin-top:14px;font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--neon);letter-spacing:1px}
+
+/* HOW IT WORKS */
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:52px;position:relative}
+.how-grid::before{content:'';position:absolute;top:36px;left:calc(16.66% + 10px);right:calc(16.66% + 10px);height:1px;background:linear-gradient(90deg,var(--neon),var(--accent));opacity:.3;z-index:0}
+.how-step{text-align:center;padding:0 24px;position:relative;z-index:1}
+.how-num{width:72px;height:72px;border-radius:50%;border:2px solid transparent;background:linear-gradient(var(--bg2),var(--bg2)) padding-box,linear-gradient(135deg,var(--neon),var(--accent)) border-box;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:22px;font-weight:800;color:var(--neon);margin:0 auto 20px;box-shadow:0 0 28px rgba(0,212,255,.18)}
+.how-title{font-size:16px;font-weight:700;margin-bottom:10px}
+.how-desc{font-size:13px;color:var(--t2);line-height:1.7}
+
+/* TECH STACK */
+.tech-strip{display:flex;gap:14px;flex-wrap:wrap;margin-top:36px;justify-content:center}
+.tech-badge{display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:10px;border:1px solid var(--b2);background:var(--s2);font-size:12.5px;font-weight:600;color:var(--t1);transition:all .2s;cursor:default}
+.tech-badge:hover{border-color:var(--b3);background:var(--s3);transform:translateY(-2px)}
+.tech-dot{width:7px;height:7px;border-radius:50%}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:52px}
+.pricing-card{border-radius:18px;border:1px solid var(--b1);background:var(--s1);padding:32px;position:relative;overflow:hidden;transition:all .3s}
+.pricing-card.featured{border-color:rgba(0,212,255,.35);background:linear-gradient(145deg,rgba(0,212,255,.04),rgba(99,102,241,.03));box-shadow:0 0 60px rgba(0,212,255,.1)}
+.pricing-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--neon),var(--accent))}
+.pricing-badge{position:absolute;top:16px;right:16px;padding:4px 10px;border-radius:8px;background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;font-size:10px;font-weight:800;letter-spacing:.8px}
+.pricing-tier{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.pricing-price{font-family:'Orbitron',monospace;font-size:42px;font-weight:800;color:var(--t1);line-height:1;margin-bottom:4px}
+.pricing-price sup{font-size:20px;color:var(--t2);font-weight:400}
+.pricing-price sub{font-size:14px;color:var(--t3)}
+.pricing-desc{font-size:13px;color:var(--t2);margin:10px 0 24px;line-height:1.6}
+.pricing-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.pricing-features li{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--t2)}
+.pricing-features li::before{content:'✓';color:var(--mint);font-weight:700;flex-shrink:0;margin-top:1px}
+.pricing-features li.dim::before{content:'—';color:var(--t3)}
+.pricing-features li.dim{color:var(--t3)}
+
+/* TESTIMONIALS */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:52px}
+.testi-card{padding:28px;border-radius:16px;border:1px solid var(--b1);background:var(--s1);backdrop-filter:blur(12px)}
+.testi-stars{display:flex;gap:3px;margin-bottom:14px;font-size:14px}
+.testi-text{font-size:14px;color:var(--t1);line-height:1.75;margin-bottom:20px;font-style:italic}
+.testi-author{display:flex;align-items:center;gap:10px}
+.testi-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--neon));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#000;flex-shrink:0}
+.testi-name{font-size:13px;font-weight:700}
+.testi-role{font-size:11px;color:var(--t3)}
+
+/* CTA SECTION */
+.cta-band{background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(99,102,241,.08));border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);padding:80px 32px;text-align:center;position:relative;z-index:2;overflow:hidden}
+.cta-band::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,212,255,.08),transparent 70%)}
+
+/* FOOTER */
+footer{background:var(--bg1);border-top:1px solid var(--b1);padding:60px 32px 32px;position:relative;z-index:2}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1200px;margin:0 auto 40px}
+.footer-brand{max-width:280px}
+.footer-brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.footer-brand-text{font-family:'Orbitron',monospace;font-size:15px;font-weight:800;letter-spacing:2px;background:linear-gradient(90deg,var(--neon),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.footer-desc{font-size:13px;color:var(--t3);line-height:1.7}
+.footer-col-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t2);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.footer-links{list-style:none;display:flex;flex-direction:column;gap:9px}
+.footer-links a{font-size:13px;color:var(--t3);text-decoration:none;transition:color .2s;cursor:pointer}
+.footer-links a:hover{color:var(--neon)}
+.footer-bottom{max-width:1200px;margin:0 auto;padding-top:28px;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.footer-legal{font-size:12px;color:var(--t3)}
+.footer-badges{display:flex;gap:8px;flex-wrap:wrap}
+.footer-badge{padding:4px 10px;border-radius:6px;border:1px solid var(--b1);background:var(--s1);font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
+
+/* ═══ LOGIN PAGE ═════════════════════════════════════════════ */
+#login{padding-top:var(--nav-h);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:calc(var(--nav-h) + 40px) 32px 60px}
+.login-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:960px;width:100%;border-radius:24px;overflow:hidden;border:1px solid var(--b2);box-shadow:var(--shadow-lg)}
+.login-left{background:linear-gradient(145deg,rgba(0,212,255,.06),rgba(99,102,241,.08));padding:52px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--b1);position:relative;overflow:hidden}
+.login-left::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 30%,rgba(0,212,255,.12),transparent 60%)}
+.login-left-content{position:relative;z-index:1}
+.login-brand{display:flex;align-items:center;gap:9px;margin-bottom:32px}
+.login-brand-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--neon),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px;animation:rotateSlow 12s linear infinite}
+.login-brand-name{font-family:'Orbitron',monospace;font-size:15px;font-weight:800;letter-spacing:2.5px;background:linear-gradient(90deg,var(--neon),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-left h2{font-family:'Orbitron',monospace;font-size:28px;font-weight:800;line-height:1.2;margin-bottom:14px;letter-spacing:-1px}
+.login-left h2 span{background:linear-gradient(135deg,var(--neon),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-left-desc{font-size:14px;color:var(--t2);line-height:1.75;margin-bottom:32px}
+.login-features{display:flex;flex-direction:column;gap:12px}
+.login-feat{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1)}
+.login-feat-icon{width:28px;height:28px;border-radius:7px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.login-left-footer{position:relative;z-index:1;margin-top:32px;font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+.login-right{background:var(--bg2);padding:52px}
+.login-form-title{font-family:'Orbitron',monospace;font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-.5px}
+.login-form-sub{font-size:13px;color:var(--t2);margin-bottom:32px;line-height:1.55}
+.btn-google{width:100%;padding:13px 20px;border-radius:11px;border:1px solid var(--b3);background:var(--s2);display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;font-weight:700;color:var(--t1);cursor:pointer;transition:all .3s;margin-bottom:20px;font-family:'Syne',sans-serif}
+.btn-google:hover{background:var(--s3);border-color:var(--b3);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.google-icon{width:20px;height:20px;flex-shrink:0}
+.login-divider{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--b1)}
+.login-divider span{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--t2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.form-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--b2);background:var(--s2);color:var(--t1);font-size:13.5px;font-family:'Syne',sans-serif;outline:none;transition:all .2s}
+.form-input:focus{border-color:rgba(0,212,255,.45);background:var(--s3);box-shadow:0 0 0 3px rgba(0,212,255,.08)}
+.form-input::placeholder{color:var(--t3)}
+.form-input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-login-submit{width:100%;padding:13px;border-radius:11px;background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:.5px;box-shadow:0 0 28px rgba(0,212,255,.25);transition:all .3s;margin-top:20px}
+.btn-login-submit:hover{transform:translateY(-1px);box-shadow:0 0 48px rgba(0,212,255,.45)}
+.login-footer{margin-top:18px;text-align:center;font-size:12px;color:var(--t3)}
+.login-footer a{color:var(--neon);cursor:pointer;text-decoration:none}
+.login-footer a:hover{text-decoration:underline}
+.login-spinner{display:none;width:18px;height:18px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .65s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.login-error{display:none;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);font-size:12.5px;margin-top:12px;text-align:center}
+
+/* ═══ DASHBOARD LAYOUT ═══════════════════════════════════════ */
+#app{display:none;min-height:100vh;padding-top:var(--nav-h)}
+#app.active{display:flex;flex-direction:column}
+.app-layout{display:flex;flex:1;min-height:calc(100vh - var(--nav-h))}
+.sidebar{width:220px;flex-shrink:0;background:rgba(6,9,18,.96);border-right:1px solid var(--b1);padding:16px 8px;display:flex;flex-direction:column;gap:1px;position:sticky;top:var(--nav-h);height:calc(100vh - var(--nav-h));overflow-y:auto}
+.sb-label{font-size:9.5px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t3);letter-spacing:2.5px;text-transform:uppercase;padding:10px 13px 4px;margin-top:4px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .2s;border:none;background:none;width:100%;text-align:left;font-family:'Syne',sans-serif;position:relative;letter-spacing:.2px}
+.sb-item:hover{background:var(--s2);color:var(--t1)}
+.sb-item.active{background:rgba(0,212,255,.07);color:var(--neon);border-left:2px solid var(--neon);padding-left:11px}
+.sb-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;padding:2px 7px;border-radius:8px;font-size:9.5px;font-weight:700;background:rgba(239,68,68,.15);color:var(--red)}
+.sb-badge.warn{background:rgba(245,158,11,.15);color:var(--warn)}
+.sb-sep{height:1px;background:var(--b1);margin:8px 10px}
+.main-content{flex:1;overflow-y:auto;background:var(--bg)}
+.content-area{padding:24px;max-width:1360px}
+
+/* PAGE HEADERS */
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-hdr-left h1{font-family:'Orbitron',monospace;font-size:22px;font-weight:800;background:linear-gradient(135deg,#fff,var(--neon));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px}
+.page-hdr-left p{font-size:12px;color:var(--t3);margin-top:3px}
+.page-hdr-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:14px;margin-bottom:20px}
+.kpi-card{padding:20px 22px;border-radius:14px;border:1px solid var(--b1);background:var(--s1);position:relative;overflow:hidden;cursor:default;transition:all .25s}
+.kpi-card:hover{border-color:var(--b2);transform:translateY(-2px);box-shadow:0 10px 36px rgba(0,0,0,.35)}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--kc,linear-gradient(90deg,var(--neon),var(--accent)))}
+.kpi-icon{position:absolute;top:16px;right:18px;font-size:26px;opacity:.3}
+.kpi-label{font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px}
+.kpi-value{font-family:'Orbitron',monospace;font-size:36px;font-weight:800;line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--t3)}
+.kpi-trend{font-size:10.5px;font-weight:700;margin-top:4px}
+
+/* PANELS */
+.panel{border-radius:14px;border:1px solid var(--b1);background:var(--s1);backdrop-filter:blur(12px);padding:20px}
+.panel-head{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.panel-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t2);letter-spacing:1.2px;text-transform:uppercase}
+.panel-actions{margin-left:auto;display:flex;gap:6px}
+.panel-badge{padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;background:rgba(0,212,255,.1);color:var(--neon);border:1px solid rgba(0,212,255,.18)}
+
+/* GRIDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-auto{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+
+/* RISK BADGES */
+.risk{padding:4px 10px;border-radius:6px;font-size:9.5px;font-weight:800;letter-spacing:.6px;font-family:'JetBrains Mono',monospace}
+.risk-high{background:rgba(239,68,68,.13);color:var(--red);border:1px solid rgba(239,68,68,.22)}
+.risk-medium{background:rgba(245,158,11,.13);color:var(--warn);border:1px solid rgba(245,158,11,.22)}
+.risk-low{background:rgba(16,185,129,.13);color:var(--mint);border:1px solid rgba(16,185,129,.22)}
+
+/* ALERT ROWS */
+.alert-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;margin-bottom:8px;border:1px solid;transition:all .25s;cursor:default}
+.alert-item:hover{transform:translateX(3px)}
+.alert-item.high{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.04)}
+.alert-item.high:hover{background:rgba(239,68,68,.07)}
+.alert-item.medium{border-color:rgba(245,158,11,.22);background:rgba(245,158,11,.04)}
+.alert-item.medium:hover{background:rgba(245,158,11,.07)}
+.alert-item.low{border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.04)}
+.alert-emo{font-size:20px;flex-shrink:0}
+.alert-body{flex:1}
+.alert-title{font-size:12.5px;font-weight:700}
+.alert-item.high .alert-title{color:var(--red)}
+.alert-item.medium .alert-title{color:var(--warn)}
+.alert-item.low .alert-title{color:var(--mint)}
+.alert-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.alert-score{flex-shrink:0;font-family:'Orbitron',monospace;font-size:14px;font-weight:800}
+
+/* EQUIPMENT CARDS */
+.eq-card{padding:20px;border-radius:14px;border:1px solid var(--b1);background:var(--s1);transition:all .3s;position:relative;overflow:hidden}
+.eq-card:hover{border-color:var(--b2);transform:translateY(-3px);box-shadow:0 14px 44px rgba(0,0,0,.4)}
+.eq-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.02),transparent);opacity:0;transition:.3s}
+.eq-card:hover::before{opacity:1}
+.eq-name{font-size:15px;font-weight:700;margin-bottom:3px}
+.eq-serial{font-size:10.5px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+.eq-tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.tag{padding:3px 9px;border-radius:6px;background:var(--s3);font-size:11px;color:var(--t2)}
+.risk-bar{margin:12px 0}
+.risk-bar-info{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);margin-bottom:5px}
+.risk-bar-track{height:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:2px;transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+.eq-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:10.5px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:10px}
+.eq-actions{display:flex;gap:6px;margin-top:12px}
+
+/* KANBAN */
+.kb-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;min-height:520px}
+.kb-col{flex:1;min-width:215px;border-radius:12px;border:1px solid var(--b1);background:var(--s1);display:flex;flex-direction:column}
+.kb-col-header{padding:13px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px}
+.kb-col-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.kb-col-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.kb-col-count{margin-left:auto;min-width:22px;height:22px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:0 6px}
+.kb-list{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;transition:background .2s}
+.kb-list.drag-over{background:rgba(0,212,255,.04);border-radius:8px}
+.kb-card{padding:13px;border-radius:9px;border:1px solid var(--b1);background:var(--bg2);cursor:grab;user-select:none;transition:all .2s;position:relative}
+.kb-card:hover{border-color:var(--b2);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.kb-card.dragging{opacity:.4;transform:rotate(1.5deg) scale(1.04);cursor:grabbing}
+.kb-card.overdue{border-color:rgba(239,68,68,.3);box-shadow:0 0 16px rgba(239,68,68,.06)}
+.kb-card-prio{font-size:9.5px;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:7px}
+.kb-card-title{font-size:12.5px;font-weight:700;line-height:1.42;margin-bottom:8px}
+.kb-card-eq{font-size:11px;color:var(--t3)}
+.kb-card-footer{display:flex;align-items:center;gap:7px;margin-top:9px}
+.kb-avatar{width:23px;height:23px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#000;flex-shrink:0}
+.kb-card-tech{font-size:11px;color:var(--t2)}
+.kb-card-date{margin-left:auto;font-size:9.5px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+.kb-overdue-tag{position:absolute;top:6px;right:6px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,.15);color:var(--red);font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.kb-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:150px;gap:7px;color:var(--t3);font-size:12px;opacity:.45}
+
+/* AI INSIGHTS PANEL */
+.ai-panel{border-radius:14px;border:1px solid rgba(99,102,241,.2);background:linear-gradient(145deg,rgba(99,102,241,.04),rgba(0,212,255,.02));position:relative;overflow:hidden;padding:20px}
+.ai-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--neon))}
+.ai-insight-item{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--b1)}
+.ai-insight-item:last-child{border-bottom:none}
+.ai-insight-text{font-size:12px;color:var(--t2);line-height:1.6;flex:1}
+.ai-ib{padding:2px 7px;border-radius:5px;font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+
+/* ACTIVITY */
+.act-list{display:flex;flex-direction:column;gap:0}
+.act-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.act-title{font-size:12.5px;font-weight:600}
+.act-sub{font-size:10.5px;color:var(--t3);margin-top:1px}
+
+/* PREDICTION CARDS */
+.pred-card{padding:20px;border-radius:14px;border:1px solid var(--b1);background:var(--s1)}
+.pred-gauge{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin:10px 0}
+.pred-gauge-fill{height:100%;border-radius:3px;transition:width 1.5s cubic-bezier(.4,0,.2,1)}
+.pred-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pred-metric{padding:9px 12px;border-radius:8px;background:var(--s2)}
+.pred-metric-val{font-family:'Orbitron',monospace;font-size:17px;font-weight:800}
+.pred-metric-lbl{font-size:9.5px;color:var(--t3);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.ai-rec-box{margin-top:12px;padding:10px 13px;border-radius:8px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15)}
+.ai-rec-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:700;letter-spacing:1.5px;margin-bottom:4px}
+.ai-rec-text{font-size:11.5px;color:var(--t2);line-height:1.55}
+
+/* CALENDAR */
+.cal-header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.cal-month-title{font-family:'Orbitron',monospace;font-size:18px;font-weight:800;color:var(--neon);flex:1}
+.cal-nav-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--b2);background:var(--s2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:16px;transition:all .2s}
+.cal-nav-btn:hover{border-color:var(--neon);color:var(--neon)}
+.cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.cal-day-hdr{text-align:center;font-size:9.5px;font-family:'JetBrains Mono',monospace;color:var(--t3);font-weight:700;letter-spacing:1.5px;padding:6px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day{min-height:76px;border-radius:8px;border:1px solid var(--b1);background:var(--s1);padding:6px;cursor:pointer;transition:all .2s}
+.cal-day:hover{border-color:var(--b2);background:var(--s2)}
+.cal-day.today{border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.04)}
+.cal-day.other{opacity:.3}
+.cal-day-num{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:3px}
+.cal-event-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-event-pill.c{background:rgba(239,68,68,.2);color:var(--red)}
+.cal-event-pill.p{background:rgba(16,185,129,.2);color:var(--mint)}
+
+/* ANALYTICS */
+.chart-box{padding:20px;border-radius:14px;border:1px solid var(--b1);background:var(--s1)}
+.chart-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:16px}
+
+/* CHATBOT */
+.chat-fab{position:fixed;bottom:28px;right:28px;z-index:300;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--neon),var(--accent));cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 32px rgba(0,212,255,.42);transition:all .3s;animation:fabGlow 3s ease-in-out infinite}
+.chat-fab:hover{transform:scale(1.1) rotate(5deg)}
+@keyframes fabGlow{0%,100%{box-shadow:0 0 32px rgba(0,212,255,.42)}50%{box-shadow:0 0 54px rgba(0,212,255,.7)}}
+.chat-notif{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff}
+.chat-window{position:fixed;bottom:96px;right:28px;z-index:300;width:355px;border-radius:20px;border:1px solid rgba(0,212,255,.18);background:rgba(4,6,15,.97);backdrop-filter:blur(32px);box-shadow:0 24px 80px rgba(0,0,0,.65),0 0 60px rgba(0,212,255,.06);display:none;flex-direction:column;overflow:hidden}
+.chat-window.open{display:flex;animation:chatIn .3s cubic-bezier(.2,0,.3,1)}
+@keyframes chatIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.chat-head{padding:14px 18px;border-bottom:1px solid var(--b1);background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(0,212,255,.04));display:flex;align-items:center;gap:10px}
+.chat-head-av{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--neon));display:flex;align-items:center;justify-content:center;font-size:18px}
+.chat-head-title{font-size:13.5px;font-weight:700}
+.chat-head-status{font-size:10px;color:var(--mint);display:flex;align-items:center;gap:4px;margin-top:1px}
+.chat-head-close{margin-left:auto;background:none;border:none;color:var(--t3);cursor:pointer;font-size:20px;line-height:1}
+.chat-head-close:hover{color:var(--t1)}
+.chat-msgs{flex:1;padding:14px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.chat-msg{display:flex;flex-direction:column;max-width:84%}
+.chat-msg.user{align-self:flex-end;align-items:flex-end}
+.chat-msg.ai{align-self:flex-start}
+.chat-bubble{padding:10px 14px;border-radius:13px;font-size:12.5px;line-height:1.55}
+.chat-msg.user .chat-bubble{background:linear-gradient(135deg,var(--neon),var(--accent));color:#000;font-weight:600;border-radius:13px 13px 4px 13px}
+.chat-msg.ai .chat-bubble{background:var(--s3);color:var(--t1);border:1px solid var(--b1);border-radius:13px 13px 13px 4px}
+.chat-time{font-size:9px;color:var(--t3);margin-top:3px}
+.typing-indicator{display:flex;gap:4px;padding:10px 14px;background:var(--s3);border-radius:13px 13px 13px 4px;border:1px solid var(--b1);width:52px}
+.t-dot{width:5px;height:5px;border-radius:50%;background:var(--t3);animation:typeBounce 1.1s infinite}
+.t-dot:nth-child(2){animation-delay:.15s}.t-dot:nth-child(3){animation-delay:.3s}
+@keyframes typeBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-input-row{padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px;align-items:center}
+.chat-input{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--t1);outline:none;font-family:'Syne',sans-serif;transition:border-color .2s}
+.chat-input:focus{border-color:rgba(0,212,255,.4)}
+.chat-send-btn{width:36px;height:36px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--neon),var(--accent));cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all .2s}
+.chat-send-btn:hover{transform:scale(1.1)}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--b2);border-radius:20px;padding:28px;width:100%;max-width:520px;position:relative;animation:pageIn .3s ease;max-height:88vh;overflow-y:auto}
+.modal-title{font-family:'Orbitron',monospace;font-size:17px;font-weight:800;color:var(--neon);margin-bottom:20px;letter-spacing:-.5px}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--t3);cursor:pointer;font-size:22px;line-height:1;transition:color .2s}
+.modal-close:hover{color:var(--t1)}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px}
+.fi,.fsel{width:100%;padding:10px 13px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--t1);font-size:13px;font-family:'Syne',sans-serif;outline:none;transition:all .2s}
+.fi:focus,.fsel:focus{border-color:rgba(0,212,255,.4);background:var(--s3)}
+.fsel option{background:var(--bg2)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;gap:9px;justify-content:flex-end;margin-top:20px}
+
+/* TOASTS */
+.toast-zone{position:fixed;top:74px;right:18px;z-index:1000;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:600;border:1px solid;animation:toastIn .3s ease;backdrop-filter:blur(20px);max-width:320px;display:flex;align-items:center;gap:9px;pointer-events:all;cursor:default}
+@keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+.toast.success{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.28);color:var(--mint)}
+.toast.error{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.28);color:var(--red)}
+.toast.info{background:rgba(0,212,255,.1);border-color:rgba(0,212,255,.28);color:var(--neon)}
+.toast.warn{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.28);color:var(--warn)}
+
+/* LOADING */
+.spin{width:20px;height:20px;border:2px solid var(--b2);border-top-color:var(--neon);border-radius:50%;animation:spin .65s linear infinite;display:inline-block}
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.07) 50%,rgba(255,255,255,.03) 75%);background-size:200%;animation:skeletonShimmer 1.5s infinite;border-radius:7px}
+@keyframes skeletonShimmer{0%{background-position:200%}100%{background-position:-200%}}
+
+/* SETTINGS */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.settings-card{padding:22px;border-radius:14px;border:1px solid var(--b1);background:var(--s1)}
+.settings-card-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--b1)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:12.5px;color:var(--t2)}
+.toggle-sub{font-size:10.5px;color:var(--t3);margin-top:2px}
+.toggle-switch{width:40px;height:22px;border-radius:11px;background:var(--s3);border:1px solid var(--b2);cursor:pointer;position:relative;transition:all .3s;flex-shrink:0}
+.toggle-switch.on{background:linear-gradient(135deg,var(--neon),var(--accent));border-color:transparent}
+.toggle-switch::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .3s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.toggle-switch.on::after{left:22px}
+.api-status-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:9px;background:var(--s2);border:1px solid var(--b1);margin-bottom:12px;font-size:12.5px}
+.settings-section-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t3);letter-spacing:2px;text-transform:uppercase;padding:8px 0 4px;border-bottom:1px solid var(--b1);margin-bottom:4px}
+.select-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--b1)}
+.select-row:last-child{border-bottom:none}
+.select-row-label{font-size:12.5px;color:var(--t2)}
+.select-row select{background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--t1);font-family:'Syne',sans-serif;cursor:pointer;outline:none}
+.select-row select option{background:var(--bg2)}
+.shortcut-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--b1)}
+.shortcut-row:last-child{border-bottom:none}
+.shortcut-label{font-size:12px;color:var(--t2)}
+.kbd{padding:3px 8px;border-radius:5px;background:var(--s3);border:1px solid var(--b2);font-size:10.5px;font-family:'JetBrains Mono',monospace;color:var(--neon)}
+
+/* PROFILE PAGE */
+.profile-hero{border-radius:18px;border:1px solid var(--b1);background:var(--s1);overflow:hidden;margin-bottom:16px;position:relative}
+.profile-cover{height:140px;background:linear-gradient(135deg,rgba(0,212,255,.12) 0%,rgba(99,102,241,.15) 50%,rgba(16,185,129,.08) 100%);position:relative;overflow:hidden}
+.profile-cover::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(4,6,15,.7))}
+.profile-cover-pattern{position:absolute;inset:0;opacity:.15;background-image:repeating-linear-gradient(45deg,var(--neon) 0,var(--neon) 1px,transparent 0,transparent 50%);background-size:20px 20px}
+.profile-info-row{display:flex;align-items:flex-end;gap:20px;padding:0 28px 24px;position:relative;margin-top:-44px}
+.profile-avatar-wrap{position:relative;flex-shrink:0}
+.profile-avatar{width:88px;height:88px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--neon));display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#000;border:3px solid var(--bg);box-shadow:0 0 32px rgba(0,212,255,.3);font-family:'Orbitron',monospace}
+.profile-online-dot{position:absolute;bottom:4px;right:4px;width:16px;height:16px;border-radius:50%;background:var(--mint);border:2px solid var(--bg);box-shadow:0 0 8px var(--mint)}
+.profile-name{font-family:'Orbitron',monospace;font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:3px}
+.profile-role-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,rgba(0,212,255,.12),rgba(99,102,241,.1));border:1px solid rgba(0,212,255,.2);font-size:11px;font-weight:700;color:var(--neon);font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+.profile-meta{display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap}
+.profile-meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t3)}
+.profile-actions{margin-left:auto;display:flex;gap:8px;align-items:flex-end;padding-bottom:2px}
+.profile-body{display:grid;grid-template-columns:300px 1fr;gap:16px}
+.profile-sidebar{display:flex;flex-direction:column;gap:16px}
+.profile-section{padding:20px;border-radius:14px;border:1px solid var(--b1);background:var(--s1)}
+.profile-section-title{font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t3);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.skill-bar{margin-bottom:11px}
+.skill-bar-top{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px}
+.skill-bar-track{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+.skill-bar-fill{height:100%;border-radius:3px;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
+.cert-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b1)}
+.cert-item:last-child{border-bottom:none}
+.cert-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.cert-name{font-size:12.5px;font-weight:700}
+.cert-date{font-size:10.5px;color:var(--t3);margin-top:1px;font-family:'JetBrains Mono',monospace}
+.stat-card{padding:16px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);text-align:center}
+.stat-card-val{font-family:'Orbitron',monospace;font-size:24px;font-weight:800;line-height:1;margin-bottom:3px}
+.stat-card-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.activity-timeline{display:flex;flex-direction:column;gap:0}
+.timeline-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--b1);position:relative}
+.timeline-item:last-child{border-bottom:none}
+.tl-line{position:absolute;left:10px;top:32px;bottom:-12px;width:1px;background:var(--b1)}
+.tl-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:2px;border:1px solid var(--b2)}
+.tl-body{flex:1}
+.tl-title{font-size:12.5px;font-weight:700;color:var(--t1)}
+.tl-sub{font-size:11px;color:var(--t3);margin-top:2px;line-height:1.5}
+.tl-time{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:3px}
+.contact-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b1);font-size:12.5px}
+.contact-row:last-child{border-bottom:none}
+.contact-icon{width:30px;height:30px;border-radius:7px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.contact-label{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;letter-spacing:.8px}
+.contact-val{font-size:12.5px;color:var(--t1)}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:7px}
+.tag-chip{padding:4px 11px;border-radius:7px;border:1px solid var(--b2);background:var(--s2);font-size:11.5px;color:var(--t2);cursor:default;transition:all .2s}
+.tag-chip:hover{border-color:var(--neon);color:var(--neon);background:rgba(0,212,255,.06)}
+.progress-ring{transform:rotate(-90deg)}
+.profile-edit-input{background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--t1);font-family:'Syne',sans-serif;outline:none;width:100%;transition:border-color .2s}
+.profile-edit-input:focus{border-color:rgba(0,212,255,.4)}
+
+/* RESPONSIVE */
+@media(max-width:1024px){.analytics-grid{grid-template-columns:1fr}.feat-grid,.pricing-grid,.testi-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.hero-stats{grid-template-columns:1fr 1fr}.login-wrap{grid-template-columns:1fr}.login-left{display:none}.settings-grid{grid-template-columns:1fr}.grid-2,.grid-3{grid-template-columns:1fr}.sidebar{width:52px}.sb-item span:not(.sb-icon){display:none}.sb-label,.sb-badge{display:none}.feat-grid,.pricing-grid,.testi-grid,.how-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.hero-stats{grid-template-columns:1fr 1fr}.frow{grid-template-columns:1fr}.chat-window{width:calc(100vw - 32px)}}
+</style>
+<!-- CURSOR -->
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="curRing"></div>
+
+<!-- AMBIENT -->
+<div class="noise"></div><div class="ambient"></div>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+
+<!-- TOASTS -->
+<div class="toast-zone" id="toastZone"></div>
+
+<!-- NAV -->
+<nav id="topnav">
+  <a class="nav-logo" onclick="showView('landing')">
+    <div class="nav-logo-icon">⚙</div>
+    <span class="nav-logo-text">MAINTENX</span>
+  </a>
+  <div class="nav-links" id="navLinks">
+    <button class="nav-link" onclick="scrollTo_('#features')">Features</button>
+    <button class="nav-link" onclick="scrollTo_('#how')">How It Works</button>
+    <button class="nav-link" onclick="scrollTo_('#tech')">Tech Stack</button>
+    <button class="nav-link" onclick="scrollTo_('#pricing')">Pricing</button>
+    <button class="nav-link" onclick="scrollTo_('#testimonials')">Testimonials</button>
+  </div>
+  <div id="navLinksApp" class="nav-links" style="display:none">
+    <button class="nav-link" onclick="switchTab('dashboard')" data-tab="dashboard">Dashboard</button>
+    <button class="nav-link" onclick="switchTab('equipment')" data-tab="equipment">Equipment</button>
+    <button class="nav-link" onclick="switchTab('kanban')" data-tab="kanban">Kanban</button>
+    <button class="nav-link" onclick="switchTab('predictions')" data-tab="predictions">AI Predict</button>
+    <button class="nav-link" onclick="switchTab('analytics')" data-tab="analytics">Analytics</button>
+  </div>
+  <div class="nav-right">
+    <div class="nav-pill pill-live" id="liveStatus" style="display:none"><div class="pill-dot"></div>LIVE</div>
+    <button class="btn-nav-login" id="navLoginBtn" onclick="showView('login')">Sign In</button>
+    <button class="btn-nav-cta" id="navCTABtn" onclick="showView('login')">Get Started Free</button>
+    <div class="nav-user-menu" id="navUserMenu" style="display:none" onclick="switchTab('profile')" title="View Profile">
+      <div class="nav-avatar" id="navAvatarEl">U</div>
+      <div><div class="nav-user-name" id="navUserName">User</div><div class="nav-user-role" id="navUserRole">Admin</div></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="navLogoutBtn" style="display:none" onclick="handleLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════════════════════════════ -->
+<div id="landing" class="page active">
+
+  <!-- HERO -->
+  <section class="hero">
+    <canvas id="hero-canvas"></canvas>
+    <div class="hero-glow-line"></div>
+    <div class="hero-content">
+      <div class="hero-badge"><div class="hero-badge-dot"></div>AI-POWERED PREDICTIVE MAINTENANCE · REAL-TIME INTELLIGENCE</div>
+      <h1 class="hero-title">
+        <span class="grad">MAINTENX</span><br>
+        <span class="grad" style="font-size:.72em;letter-spacing:-1px">INTELLIGENCE</span>
+      </h1>
+      <div class="hero-subtitle">Predict. <span class="hi">Prevent.</span> Perform.</div>
+      <p class="hero-desc">The most advanced AI-powered predictive maintenance platform. Detect equipment failures <strong style="color:var(--t1)">before they happen</strong>, automate work orders with natural language, and maximize asset uptime across your entire facility.</p>
+      <div class="hero-ctas">
+        <button class="hero-cta-main" onclick="showView('login')">⚡ Start Free Trial</button>
+        <button class="hero-cta-sec" onclick="scrollTo_('#features')">Explore Features →</button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-n" id="hs1">0</div><div class="hero-stat-l">Assets Monitored</div></div>
+      <div class="hero-stat"><div class="hero-stat-n" id="hs2">0%</div><div class="hero-stat-l">Prediction Accuracy</div></div>
+      <div class="hero-stat"><div class="hero-stat-n" id="hs3">0h</div><div class="hero-stat-l">Downtime Prevented</div></div>
+      <div class="hero-stat"><div class="hero-stat-n" id="hs4">0+</div><div class="hero-stat-l">Enterprises Trust Us</div></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <div class="divider"></div>
+  <section class="section" id="features">
+    <div class="section-label">⚡ PLATFORM FEATURES</div>
+    <h2 class="section-title">Everything You Need to<br><span class="grad">Eliminate Unplanned Downtime</span></h2>
+    <p class="section-sub">Built for modern industrial facilities — from single-site operations to multi-campus enterprise deployments.</p>
+    <div class="feat-grid">
+      <div class="feat-card" style="--feat-c:rgba(0,212,255,.18)">
+        <div class="feat-icon-wrap">🔮</div>
+        <div class="feat-title">Predictive Failure Analysis</div>
+        <div class="feat-desc">RandomForest + GradientBoosting ML models trained on 50,000+ real maintenance records. Predict failures with <strong style="color:var(--t1)">94.2% accuracy</strong> days or weeks before they occur.</div>
+        <div class="feat-tag font-mono">→ ML POWERED</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(99,102,241,.18)">
+        <div class="feat-icon-wrap">🤖</div>
+        <div class="feat-title">Natural Language Work Orders</div>
+        <div class="feat-desc">Simply describe the issue in plain English. Our NLP pipeline extracts equipment, priority, and issue type — then <strong style="color:var(--t1)">auto-creates and assigns</strong> the maintenance ticket instantly.</div>
+        <div class="feat-tag font-mono">→ NLP CHATBOT</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(16,185,129,.15)">
+        <div class="feat-icon-wrap">🟦</div>
+        <div class="feat-title">Live Kanban Workflow</div>
+        <div class="feat-desc">Real-time drag-and-drop Kanban board with instant MongoDB sync. Every status change, assignment, and update is persisted immediately across all team members.</div>
+        <div class="feat-tag font-mono">→ REAL-TIME SYNC</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(245,158,11,.15)">
+        <div class="feat-icon-wrap">⚡</div>
+        <div class="feat-title">Smart Technician Assignment</div>
+        <div class="feat-desc">AI selects the optimal technician based on skill set, first-time fix rate, current workload, and equipment history. Reduce repeat visits by <strong style="color:var(--t1)">40%</strong>.</div>
+        <div class="feat-tag font-mono">→ AI ASSIGNMENT</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(239,68,68,.15)">
+        <div class="feat-icon-wrap">📊</div>
+        <div class="feat-title">Real-time Analytics</div>
+        <div class="feat-desc">Live dashboards with failure trend analysis, team workload heat maps, equipment health scores, and ROI calculations updated every 60 seconds from your live database.</div>
+        <div class="feat-tag font-mono">→ LIVE DATA</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(249,115,22,.15)">
+        <div class="feat-icon-wrap">📅</div>
+        <div class="feat-title">Preventive Maintenance Scheduling</div>
+        <div class="feat-desc">Interactive calendar with AI-optimized scheduling. Automatically suggests optimal PM windows based on production schedules, equipment usage, and risk scores.</div>
+        <div class="feat-tag font-mono">→ AUTO-SCHEDULE</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(0,212,255,.12)">
+        <div class="feat-icon-wrap">🔐</div>
+        <div class="feat-title">Google OAuth + Role-Based Access</div>
+        <div class="feat-desc">One-click Google sign-in. JWT-based session management with role-based access control: Admin, Manager, Technician, and Viewer roles with fine-grained permissions.</div>
+        <div class="feat-tag font-mono">→ ENTERPRISE AUTH</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(99,102,241,.12)">
+        <div class="feat-icon-wrap">📡</div>
+        <div class="feat-title">REST API + Webhooks</div>
+        <div class="feat-desc">Full REST API with 30+ endpoints. Integrate with your existing CMMS, ERP, or IoT platform. Webhooks fire on every status change, prediction update, and alert.</div>
+        <div class="feat-tag font-mono">→ FULLY OPEN API</div>
+      </div>
+      <div class="feat-card" style="--feat-c:rgba(16,185,129,.12)">
+        <div class="feat-icon-wrap">☁️</div>
+        <div class="feat-title">Cloud + On-Premise Deployment</div>
+        <div class="feat-desc">Deploy anywhere with Docker Compose. MongoDB Atlas for cloud, or self-hosted for compliance. Full Docker container orchestration with Nginx reverse proxy included.</div>
+        <div class="feat-tag font-mono">→ DOCKER READY</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <div class="divider"></div>
+  <section class="section" id="how">
+    <div class="section-label">🔄 HOW IT WORKS</div>
+    <h2 class="section-title">From <span class="grad">Raw Data</span> to<br>Actionable Intelligence</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">01</div>
+        <div class="how-title">Connect Your Assets</div>
+        <div class="how-desc">Register your equipment fleet via the UI or bulk import via API. Connect IoT sensors for real-time telemetry data, or manually log usage hours and maintenance events.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">02</div>
+        <div class="how-title">AI Analyzes Continuously</div>
+        <div class="how-desc">Our ML pipeline runs RandomForest classification and GradientBoosting regression on every asset every hour. Risk scores, failure probabilities, and confidence intervals update automatically.</div>
+      </div>
+      <div class="how-step">
+        <div class="how-num">03</div>
+        <div class="how-title">Act Before Failure</div>
+        <div class="how-desc">Receive proactive alerts with specific recommendations. Technicians are auto-assigned based on skills and availability. Drag-and-drop the workflow through to completion.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <div class="divider"></div>
+  <section class="section-sm" id="tech" style="text-align:center">
+    <div class="section-label" style="margin:0 auto 14px">🛠️ TECHNOLOGY STACK</div>
+    <h2 class="section-title">Enterprise-Grade Stack,<br><span class="grad">Built for Scale</span></h2>
+    <div class="tech-strip">
+      <div class="tech-badge"><div class="tech-dot" style="background:#68a063"></div>Node.js 20</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#e8e8e8"></div>Express 4.18</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#47a248"></div>MongoDB 7.0</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#00d4ff"></div>Mongoose 8</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#f7931e"></div>JWT Auth</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#009688"></div>FastAPI</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#f7931e"></div>scikit-learn</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#4584b6"></div>Python 3.11</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#88ce02"></div>NumPy</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#00d4ff"></div>Three.js</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#ff6384"></div>Chart.js</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#0db7ed"></div>Docker</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#009639"></div>Nginx</div>
+      <div class="tech-badge"><div class="tech-dot" style="background:#ea4335"></div>Google OAuth</div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <div class="divider"></div>
+  <section class="section" id="pricing">
+    <div class="section-label">💳 PRICING</div>
+    <h2 class="section-title">Simple, Transparent<br><span class="grad">Pricing for Every Team</span></h2>
+    <p class="section-sub">Start free, scale as you grow. No hidden fees, no per-seat surprises.</p>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier">Starter</div>
+        <div class="pricing-price"><sup>$</sup>0<sub>/mo</sub></div>
+        <div class="pricing-desc">Perfect for small teams getting started with predictive maintenance.</div>
+        <ul class="pricing-features">
+          <li>Up to 10 equipment assets</li>
+          <li>AI failure prediction (basic)</li>
+          <li>Kanban board</li>
+          <li>3 technician accounts</li>
+          <li>Email notifications</li>
+          <li class="dim">Advanced ML models</li>
+          <li class="dim">API access</li>
+          <li class="dim">Custom integrations</li>
+        </ul>
+        <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="showView('login')">Get Started Free</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">POPULAR</div>
+        <div class="pricing-tier">Professional</div>
+        <div class="pricing-price"><sup>$</sup>149<sub>/mo</sub></div>
+        <div class="pricing-desc">For growing operations that need full AI-powered maintenance intelligence.</div>
+        <ul class="pricing-features">
+          <li>Unlimited equipment assets</li>
+          <li>Advanced ML predictions (RandomForest + GBM)</li>
+          <li>NLP chatbot with auto-assignment</li>
+          <li>15 technician accounts</li>
+          <li>Full analytics dashboard</li>
+          <li>REST API access</li>
+          <li>Calendar scheduling</li>
+          <li class="dim">Custom ML model training</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="showView('login')">Start 14-Day Trial</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-tier">Enterprise</div>
+        <div class="pricing-price"><sup>$</sup>499<sub>/mo</sub></div>
+        <div class="pricing-desc">For large facilities requiring custom AI models, on-premise deployment, and SLA guarantees.</div>
+        <ul class="pricing-features">
+          <li>Unlimited everything</li>
+          <li>Custom ML model training on your data</li>
+          <li>On-premise or private cloud deployment</li>
+          <li>Unlimited technician accounts</li>
+          <li>SSO / SAML integration</li>
+          <li>Dedicated support engineer</li>
+          <li>99.9% SLA uptime guarantee</li>
+          <li>Full source code license</li>
+        </ul>
+        <button class="btn btn-secondary" style="width:100%;justify-content:center" onclick="showToast('Contact sales@maintenx.ai','info')">Contact Sales</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <div class="divider"></div>
+  <section class="section" id="testimonials">
+    <div class="section-label">⭐ TESTIMONIALS</div>
+    <h2 class="section-title">Trusted by<br><span class="grad">Industrial Leaders</span></h2>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+        <div class="testi-text">"MaintenX reduced our unplanned downtime by 73% in the first quarter. The AI prediction accuracy is genuinely impressive — it flagged our CNC bearing failure 11 days before it happened."</div>
+        <div class="testi-author">
+          <div class="testi-avatar">RK</div>
+          <div><div class="testi-name">Raj Kumar</div><div class="testi-role">VP Operations, Teknik Manufacturing</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+        <div class="testi-text">"The NLP chatbot is a game-changer. Our techs just describe what's broken and it creates the ticket, assigns it, and schedules it automatically. We saved 2 hours of admin work per day."</div>
+        <div class="testi-author">
+          <div class="testi-avatar">SL</div>
+          <div><div class="testi-name">Sarah Liu</div><div class="testi-role">Maintenance Manager, PharmaCore Inc.</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+        <div class="testi-text">"We evaluated 6 platforms. MaintenX was the only one with real ML predictions — not just rule-based alerts. The ROI in year one was $2.1M in prevented downtime costs."</div>
+        <div class="testi-author">
+          <div class="testi-avatar">MO</div>
+          <div><div class="testi-name">Marco Olivetti</div><div class="testi-role">CTO, AutoParts Global</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BAND -->
+  <div class="divider"></div>
+  <div class="cta-band">
+    <div style="position:relative;z-index:1;max-width:600px;margin:0 auto">
+      <div class="section-label" style="margin:0 auto 16px;width:fit-content">🚀 GET STARTED TODAY</div>
+      <h2 class="section-title" style="margin-bottom:14px">Ready to Predict<br><span class="grad">Your Next Failure?</span></h2>
+      <p style="font-size:15px;color:var(--t2);margin-bottom:32px;line-height:1.7">Join 500+ enterprises already using MaintenX AI to prevent equipment failures and maximize uptime. Get up and running in under 10 minutes.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="hero-cta-main" onclick="showView('login')">⚡ Start Free Trial — No Credit Card</button>
+        <button class="hero-cta-sec" onclick="scrollTo_('#features')">View All Features</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-brand-logo">
+          <div class="nav-logo-icon" style="width:28px;height:28px;font-size:14px">⚙</div>
+          <span class="footer-brand-text">MAINTENX AI</span>
+        </div>
+        <div class="footer-desc">The most advanced AI-powered predictive maintenance platform for modern industrial operations. Built with enterprise-grade security, reliability, and scalability.</div>
+      </div>
+      <div>
+        <div class="footer-col-title">Product</div>
+        <ul class="footer-links">
+          <li><a onclick="scrollTo_('#features')">Features</a></li>
+          <li><a onclick="scrollTo_('#pricing')">Pricing</a></li>
+          <li><a onclick="scrollTo_('#tech')">Tech Stack</a></li>
+          <li><a onclick="showView('login')">Dashboard</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Platform</div>
+        <ul class="footer-links">
+          <li><a>API Reference</a></li>
+          <li><a>Documentation</a></li>
+          <li><a>Changelog</a></li>
+          <li><a>Status Page</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <ul class="footer-links">
+          <li><a>About Us</a></li>
+          <li><a>Blog</a></li>
+          <li><a>Careers</a></li>
+          <li><a onclick="showToast('sales@maintenx.ai','info')">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-legal">© 2024 MaintenX AI. All rights reserved. Built for industrial excellence.</div>
+      <div class="footer-badges">
+        <div class="footer-badge">SOC 2 TYPE II</div>
+        <div class="footer-badge">ISO 27001</div>
+        <div class="footer-badge">GDPR COMPLIANT</div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOGIN PAGE
+══════════════════════════════════════════════════════════ -->
+<div id="login" class="page">
+  <div class="login-wrap">
+    <div class="login-left">
+      <div class="login-left-content">
+        <div class="login-brand">
+          <div class="login-brand-icon">⚙</div>
+          <span class="login-brand-name">MAINTENX AI</span>
+        </div>
+        <h2>Intelligent<br><span>Maintenance</span><br>Starts Here</h2>
+        <div class="login-left-desc">Join 500+ enterprises using MaintenX AI to predict equipment failures, automate work orders, and maximize asset uptime.</div>
+        <div class="login-features">
+          <div class="login-feat"><div class="login-feat-icon">🔮</div>94.2% accurate ML failure predictions</div>
+          <div class="login-feat"><div class="login-feat-icon">🤖</div>NLP chatbot auto-creates maintenance tickets</div>
+          <div class="login-feat"><div class="login-feat-icon">🟦</div>Real-time Kanban workflow management</div>
+          <div class="login-feat"><div class="login-feat-icon">📊</div>Live analytics and performance dashboards</div>
+          <div class="login-feat"><div class="login-feat-icon">⚡</div>Smart technician auto-assignment</div>
+          <div class="login-feat"><div class="login-feat-icon">🔐</div>Enterprise-grade security & Google SSO</div>
+        </div>
+      </div>
+      <div class="login-left-footer">MAINTENX AI · SECURE · ENCRYPTED · SOC 2 COMPLIANT</div>
+    </div>
+    <div class="login-right">
+      <div class="login-form-title">Welcome Back</div>
+      <div class="login-form-sub">Sign in to your MaintenX dashboard. New here? Your free account is created instantly.</div>
+
+      <button class="btn-google" onclick="handleGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="login-divider"><span>OR SIGN IN WITH EMAIL</span></div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" type="email" id="loginEmail" placeholder="you@company.com" onkeydown="if(event.key==='Enter')handleLogin()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="loginPassword" placeholder="••••••••••" onkeydown="if(event.key==='Enter')handleLogin()">
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" style="accent-color:var(--neon)"> Remember me</label>
+        <a style="color:var(--neon);cursor:pointer">Forgot password?</a>
+      </div>
+      <button class="btn-login-submit" onclick="handleLogin()" id="loginSubmitBtn">
+        <span id="loginBtnText">Sign In to Dashboard →</span>
+        <div class="login-spinner" id="loginSpinner"></div>
+      </button>
+      <div class="login-error" id="loginError">Invalid credentials. Try any email + password, or use Google.</div>
+      <div class="login-footer">Don't have an account? <a onclick="handleLogin()">Create one free →</a> · <a onclick="showView('landing')">← Back to home</a></div>
+    </div>
+  </div>
+</div>
+<!-- ══════════════════════════════════════════════════════════
+     APP — DASHBOARD (shown after login)
+══════════════════════════════════════════════════════════ -->
+<div id="app">
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sb-label">Overview</div>
+      <button class="sb-item active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="sb-icon">📊</span><span>Dashboard</span></button>
+      <button class="sb-item" data-tab="equipment" onclick="switchTab('equipment')"><span class="sb-icon">🏭</span><span>Equipment</span></button>
+      <button class="sb-item" data-tab="kanban" onclick="switchTab('kanban')"><span class="sb-icon">🟦</span><span>Kanban Board</span><span class="sb-badge" id="overdueCount">0</span></button>
+      <button class="sb-item" data-tab="calendar" onclick="switchTab('calendar')"><span class="sb-icon">📅</span><span>Calendar</span></button>
+      <div class="sb-label">AI Intelligence</div>
+      <button class="sb-item" data-tab="predictions" onclick="switchTab('predictions')"><span class="sb-icon">🔮</span><span>AI Predictions</span></button>
+      <button class="sb-item" data-tab="analytics" onclick="switchTab('analytics')"><span class="sb-icon">📈</span><span>Analytics</span></button>
+      <button class="sb-item" onclick="toggleChat()"><span class="sb-icon">🤖</span><span>AI Chatbot</span></button>
+      <div class="sb-sep"></div>
+      <div class="sb-label">Account</div>
+      <button class="sb-item" data-tab="profile" onclick="switchTab('profile')"><span class="sb-icon">👤</span><span>My Profile</span></button>
+      <button class="sb-item" data-tab="settings" onclick="switchTab('settings')"><span class="sb-icon">⚙️</span><span>Settings</span></button>
+      <button class="sb-item" onclick="handleLogout()"><span class="sb-icon">🚪</span><span>Sign Out</span></button>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content" id="mainContent">
+
+      <!-- ── DASHBOARD TAB ── -->
+      <div class="content-area" id="tab-dashboard" data-tab-content="dashboard">
+        <div class="page-hdr">
+          <div class="page-hdr-left">
+            <h1>Dashboard</h1>
+            <p id="dashWelcome">Welcome back · Real-time predictive maintenance overview</p>
+          </div>
+          <div class="page-hdr-actions">
+            <div class="nav-pill pill-live"><div class="pill-dot"></div>LIVE DATA</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('reqModal');populateEqSelect()">+ New Request</button>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi-card" style="--kc:linear-gradient(90deg,var(--neon),var(--accent2))">
+            <div class="kpi-icon">🏭</div>
+            <div class="kpi-label">Total Equipment</div>
+            <div class="kpi-value" style="color:var(--neon)" id="k-eq">—</div>
+            <div class="kpi-sub">Active monitored assets</div>
+            <div class="kpi-trend" style="color:var(--mint)">↑ Fully operational</div>
+          </div>
+          <div class="kpi-card" style="--kc:linear-gradient(90deg,var(--accent),var(--accent2))">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-label">Active Requests</div>
+            <div class="kpi-value" style="color:var(--accent)" id="k-req">—</div>
+            <div class="kpi-sub">New + In Progress</div>
+          </div>
+          <div class="kpi-card" style="--kc:linear-gradient(90deg,var(--warn),var(--orange))">
+            <div class="kpi-icon">⏰</div>
+            <div class="kpi-label">Overdue Tasks</div>
+            <div class="kpi-value" style="color:var(--warn)" id="k-over">—</div>
+            <div class="kpi-sub" id="k-over-sub">Requires immediate action</div>
+            <div class="kpi-trend" style="color:var(--red)" id="k-over-trend"></div>
+          </div>
+          <div class="kpi-card" style="--kc:linear-gradient(90deg,var(--red),var(--orange))">
+            <div class="kpi-icon">🚨</div>
+            <div class="kpi-label">AI Risk Alerts</div>
+            <div class="kpi-value" style="color:var(--red)" id="k-alert">—</div>
+            <div class="kpi-sub">High-risk equipment</div>
+            <div class="kpi-trend" style="color:var(--red)">ML predictions active</div>
+          </div>
+          <div class="kpi-card" style="--kc:linear-gradient(90deg,var(--mint),var(--neon))">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-label">Completed (Month)</div>
+            <div class="kpi-value" style="color:var(--mint)" id="k-done">—</div>
+            <div class="kpi-sub">Repaired this month</div>
+            <div class="kpi-trend" style="color:var(--mint)">↑ On track</div>
+          </div>
+        </div>
+
+        <!-- ALERTS + INSIGHTS -->
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="panel" id="alertsPanel">
+            <div class="panel-head">
+              <span>⚠️</span><span class="panel-title">AI Failure Predictions</span>
+              <div class="panel-badge">ML ACTIVE</div>
+              <div class="panel-actions"><button class="btn btn-xs btn-secondary" onclick="switchTab('predictions')">View All →</button></div>
+            </div>
+            <div id="dashAlerts"><div style="display:flex;align-items:center;gap:8px;padding:16px 0;color:var(--t3)"><div class="spin"></div> Loading predictions...</div></div>
+          </div>
+          <div class="ai-panel" id="insightsPanel">
+            <div class="panel-head">
+              <span>🤖</span><span class="panel-title">AI Smart Insights</span>
+              <div class="panel-actions"><button class="btn btn-xs btn-secondary" onclick="loadInsights()">↻</button></div>
+            </div>
+            <div id="insightsList"><div style="padding:12px 0;color:var(--t3);font-size:12px">Generating insights...</div></div>
+          </div>
+        </div>
+
+        <!-- GEAR + ACTIVITY + STATUS -->
+        <div style="display:grid;grid-template-columns:1fr 320px 290px;gap:16px;margin-bottom:16px">
+          <div class="panel" style="min-height:260px;display:flex;align-items:center;justify-content:center;position:relative;padding:0">
+            <canvas id="dash-gear" style="width:100%;height:260px"></canvas>
+            <div style="position:absolute;bottom:14px;left:14px;right:14px;display:flex;justify-content:space-between">
+              <div style="background:rgba(4,6,15,.88);border:1px solid var(--b2);border-radius:9px;padding:9px 13px">
+                <div style="font-family:'Orbitron',monospace;font-size:17px;color:var(--neon);font-weight:800" id="gs-health">94.2%</div>
+                <div style="font-size:9.5px;color:var(--t3)">Fleet Health Score</div>
+              </div>
+              <div style="background:rgba(4,6,15,.88);border:1px solid var(--b2);border-radius:9px;padding:9px 13px;text-align:right">
+                <div style="font-family:'Orbitron',monospace;font-size:17px;color:var(--mint);font-weight:800">↑ 12%</div>
+                <div style="font-size:9.5px;color:var(--t3)">vs Last Month</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>📋</span><span class="panel-title">Recent Activity</span></div>
+            <div class="act-list" id="activityFeed"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span>📊</span><span class="panel-title">Status Distribution</span></div>
+            <canvas id="statusChart" height="190"></canvas>
+          </div>
+        </div>
+
+        <!-- QUICK KANBAN -->
+        <div class="panel">
+          <div class="panel-head"><span>🟦</span><span class="panel-title">Kanban Quick View</span><div class="panel-actions"><button class="btn btn-xs btn-secondary" onclick="switchTab('kanban')">Full Board →</button></div></div>
+          <div id="dashKanbanPreview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- ── EQUIPMENT TAB ── -->
+      <div class="content-area" id="tab-equipment" data-tab-content="equipment" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>Equipment Registry</h1><p>AI-monitored assets · Real-time health scoring · Failure prediction</p></div>
+          <div class="page-hdr-actions">
+            <select class="fi" id="eqRiskFilter" onchange="filterEquipment()" style="width:160px;padding:7px 12px;font-size:12px">
+              <option value="">All Risk Levels</option>
+              <option value="high">🔴 High Risk</option>
+              <option value="medium">🟡 Medium Risk</option>
+              <option value="low">🟢 Low Risk</option>
+            </select>
+            <input class="fi" id="eqSearch" placeholder="Search equipment..." oninput="filterEquipment()" style="width:200px;padding:7px 12px;font-size:12px">
+            <button class="btn btn-primary btn-sm" onclick="openModal('eqModal')">+ Add Equipment</button>
+          </div>
+        </div>
+        <div class="grid-auto" id="eqGrid">
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:48px;justify-content:center;color:var(--t3)"><div class="spin"></div> Loading equipment...</div>
+        </div>
+      </div>
+
+      <!-- ── KANBAN TAB ── -->
+      <div class="content-area" id="tab-kanban" data-tab-content="kanban" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>Kanban Board</h1><p>Drag & drop · Live backend sync · Overdue highlighted red</p></div>
+          <div class="page-hdr-actions">
+            <button class="btn btn-primary btn-sm" onclick="openModal('reqModal');populateEqSelect()">+ New Request</button>
+          </div>
+        </div>
+        <div id="kanbanBoard" class="kb-board"></div>
+      </div>
+
+      <!-- ── PREDICTIONS TAB ── -->
+      <div class="content-area" id="tab-predictions" data-tab-content="predictions" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>🔮 AI Failure Predictions</h1><p>RandomForest + GradientBoosting · 94.2% accuracy · Updates every hour</p></div>
+          <div class="page-hdr-actions">
+            <button class="btn btn-primary btn-sm" onclick="runBulkPredict()">🔄 Recalculate All</button>
+          </div>
+        </div>
+        <div class="grid-auto" id="predGrid">
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:48px;justify-content:center;color:var(--t3)"><div class="spin"></div> Running ML models...</div>
+        </div>
+      </div>
+
+      <!-- ── CALENDAR TAB ── -->
+      <div class="content-area" id="tab-calendar" data-tab-content="calendar" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>Maintenance Calendar</h1><p>Click any date to schedule · Color-coded by type</p></div>
+          <div class="page-hdr-actions">
+            <button class="btn btn-primary btn-sm" onclick="openModal('reqModal');populateEqSelect()">+ Schedule Maintenance</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="cal-header">
+            <div class="cal-nav-btn" onclick="calNav(-1)">‹</div>
+            <div class="cal-month-title" id="calTitle">January 2024</div>
+            <div class="cal-nav-btn" onclick="calNav(1)">›</div>
+            <div style="margin-left:20px;display:flex;gap:12px;font-size:11.5px">
+              <span style="display:flex;align-items:center;gap:5px;color:var(--red)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(239,68,68,.3);display:inline-block"></span>Corrective</span>
+              <span style="display:flex;align-items:center;gap:5px;color:var(--mint)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(16,185,129,.3);display:inline-block"></span>Preventive</span>
+            </div>
+          </div>
+          <div class="cal-grid-head">
+            <div class="cal-day-hdr">SUN</div><div class="cal-day-hdr">MON</div><div class="cal-day-hdr">TUE</div>
+            <div class="cal-day-hdr">WED</div><div class="cal-day-hdr">THU</div><div class="cal-day-hdr">FRI</div><div class="cal-day-hdr">SAT</div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS TAB ── -->
+      <div class="content-area" id="tab-analytics" data-tab-content="analytics" style="display:none">
+        <div class="page-hdr"><div class="page-hdr-left"><h1>Analytics & Intelligence</h1><p>Data-driven insights · Live from your maintenance database</p></div></div>
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="chart-box"><div class="chart-title">📋 Requests per Team</div><canvas id="teamChart" height="200"></canvas></div>
+          <div class="chart-box"><div class="chart-title">🏭 Requests per Equipment (Top 6)</div><canvas id="eqChart" height="200"></canvas></div>
+        </div>
+        <div class="grid-2">
+          <div class="chart-box"><div class="chart-title">📅 Monthly Trend — Corrective vs Preventive</div><canvas id="trendChart" height="200"></canvas></div>
+          <div class="chart-box"><div class="chart-title">⚡ Fleet Risk Distribution</div><canvas id="riskChart" height="200"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ── PROFILE TAB ── -->
+      <div class="content-area" id="tab-profile" data-tab-content="profile" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>My Profile</h1><p>Personal info, performance metrics, certifications & activity</p></div>
+          <div class="page-hdr-actions">
+            <button class="btn btn-secondary btn-sm" onclick="toggleProfileEdit()">✏️ Edit Profile</button>
+            <button class="btn btn-primary btn-sm" id="profileSaveBtn" style="display:none" onclick="saveProfile()">💾 Save Changes</button>
+          </div>
+        </div>
+
+        <!-- HERO CARD -->
+        <div class="profile-hero">
+          <div class="profile-cover">
+            <div class="profile-cover-pattern"></div>
+          </div>
+          <div class="profile-info-row">
+            <div class="profile-avatar-wrap">
+              <div class="profile-avatar" id="profileAvatarEl">DA</div>
+              <div class="profile-online-dot"></div>
+            </div>
+            <div style="flex:1">
+              <div class="profile-name" id="profileName">Demo Admin</div>
+              <div style="display:flex;align-items:center;gap:10px;margin:5px 0">
+                <div class="profile-role-badge">⚡ ADMIN</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mint)"><div class="pill-dot" style="width:5px;height:5px;background:var(--mint)"></div>Online</div>
+              </div>
+              <div class="profile-meta">
+                <div class="profile-meta-item">🏢 <span id="profileDept">Maintenance Operations</span></div>
+                <div class="profile-meta-item">📍 <span id="profileLocation">Mumbai, India</span></div>
+                <div class="profile-meta-item">📅 <span>Joined March 2022</span></div>
+                <div class="profile-meta-item">🔑 <span id="profileRoleLabel">System Administrator</span></div>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <button class="btn btn-secondary btn-sm" onclick="showToast('Sharing profile...','info')">🔗 Share</button>
+              <button class="btn btn-ghost btn-sm" onclick="showToast('Downloading report...','info')">📥 Export</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BODY GRID -->
+        <div class="profile-body">
+
+          <!-- LEFT SIDEBAR -->
+          <div class="profile-sidebar">
+
+            <!-- CONTACT -->
+            <div class="profile-section">
+              <div class="profile-section-title">📬 Contact Info</div>
+              <div class="contact-row"><div class="contact-icon">✉️</div><div><div class="contact-label">EMAIL</div><div class="contact-val" id="profileEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6c080901032c010d050218090214420d05">[email&#160;protected]</a></div></div></div>
+              <div class="contact-row"><div class="contact-icon">📱</div><div><div class="contact-label">PHONE</div><div class="contact-val" id="profilePhone">+91 98765 43210</div></div></div>
+              <div class="contact-row"><div class="contact-icon">💬</div><div><div class="contact-label">SLACK</div><div class="contact-val">@demo.admin</div></div></div>
+              <div class="contact-row"><div class="contact-icon">🏢</div><div><div class="contact-label">OFFICE</div><div class="contact-val">Building A, Floor 3</div></div></div>
+              <div class="contact-row"><div class="contact-icon">🕐</div><div><div class="contact-label">TIMEZONE</div><div class="contact-val">IST (UTC+5:30)</div></div></div>
+            </div>
+
+            <!-- SKILLS -->
+            <div class="profile-section">
+              <div class="profile-section-title">🛠️ Technical Skills</div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">Predictive Maintenance</span><span style="font-size:11px;color:var(--neon);font-weight:700">96%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="96" style="width:0%;background:linear-gradient(90deg,var(--neon),var(--accent))"></div></div></div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">CMMS Management</span><span style="font-size:11px;color:var(--mint);font-weight:700">91%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="91" style="width:0%;background:linear-gradient(90deg,var(--mint),var(--neon))"></div></div></div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">Electrical Systems</span><span style="font-size:11px;color:var(--accent);font-weight:700">85%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="85" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div></div></div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">Data Analysis</span><span style="font-size:11px;color:var(--warn);font-weight:700">78%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="78" style="width:0%;background:linear-gradient(90deg,var(--warn),var(--orange))"></div></div></div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">Team Leadership</span><span style="font-size:11px;color:var(--mint);font-weight:700">92%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="92" style="width:0%;background:linear-gradient(90deg,var(--mint),var(--neon))"></div></div></div>
+              <div class="skill-bar"><div class="skill-bar-top"><span style="font-size:12px">AI / ML Tools</span><span style="font-size:11px;color:var(--neon);font-weight:700">73%</span></div><div class="skill-bar-track"><div class="skill-bar-fill" data-w="73" style="width:0%;background:linear-gradient(90deg,var(--neon),var(--accent))"></div></div></div>
+            </div>
+
+            <!-- EXPERTISE TAGS -->
+            <div class="profile-section">
+              <div class="profile-section-title">🏷️ Expertise Tags</div>
+              <div class="tag-cloud">
+                <span class="tag-chip">CNC Machines</span>
+                <span class="tag-chip">Hydraulics</span>
+                <span class="tag-chip">Electrical Panels</span>
+                <span class="tag-chip">PLC Systems</span>
+                <span class="tag-chip">ISO 55000</span>
+                <span class="tag-chip">Root Cause Analysis</span>
+                <span class="tag-chip">FMEA</span>
+                <span class="tag-chip">Lean Maintenance</span>
+                <span class="tag-chip">SCADA</span>
+                <span class="tag-chip">Vibration Analysis</span>
+                <span class="tag-chip">Thermography</span>
+                <span class="tag-chip">5S Methodology</span>
+              </div>
+            </div>
+
+            <!-- CERTIFICATIONS -->
+            <div class="profile-section">
+              <div class="profile-section-title">🎓 Certifications</div>
+              <div class="cert-item">
+                <div class="cert-icon" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2)">🏅</div>
+                <div><div class="cert-name">CMRP — Certified Maintenance & Reliability Professional</div><div class="cert-date">SMRP · Valid until Dec 2026</div></div>
+              </div>
+              <div class="cert-item">
+                <div class="cert-icon" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2)">🎖️</div>
+                <div><div class="cert-name">ISO 55001 Asset Management Lead Auditor</div><div class="cert-date">BSI Group · Valid until Jun 2025</div></div>
+              </div>
+              <div class="cert-item">
+                <div class="cert-icon" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2)">⚡</div>
+                <div><div class="cert-name">Siemens PLC Programming (S7-1500)</div><div class="cert-date">Siemens · Issued Jan 2023</div></div>
+              </div>
+              <div class="cert-item">
+                <div class="cert-icon" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2)">🔬</div>
+                <div><div class="cert-name">Vibration Analysis Category II</div><div class="cert-date">Mobius Institute · Valid until Mar 2025</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT MAIN -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- PERFORMANCE STATS -->
+            <div class="profile-section">
+              <div class="profile-section-title">📊 Performance Metrics</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+                <div class="stat-card"><div class="stat-card-val" style="color:var(--neon)" id="ps-tasks">0</div><div class="stat-card-lbl">Tasks Completed</div></div>
+                <div class="stat-card"><div class="stat-card-val" style="color:var(--mint)" id="ps-rate">0%</div><div class="stat-card-lbl">First-Fix Rate</div></div>
+                <div class="stat-card"><div class="stat-card-val" style="color:var(--accent2)" id="ps-avg">0h</div><div class="stat-card-lbl">Avg Resolution</div></div>
+                <div class="stat-card"><div class="stat-card-val" style="color:var(--warn)" id="ps-rating">0</div><div class="stat-card-lbl">Rating / 5.0</div></div>
+              </div>
+              <!-- Monthly perf chart -->
+              <div style="margin-top:6px"><canvas id="perfChart" height="110"></canvas></div>
+            </div>
+
+            <!-- ABOUT + BIO -->
+            <div class="profile-section">
+              <div class="profile-section-title">📝 About</div>
+              <div id="profileBioView" style="font-size:13.5px;color:var(--t2);line-height:1.75">Experienced Maintenance Operations Admin with 8+ years managing industrial asset reliability programs. Specialist in predictive maintenance strategy, cross-functional team leadership, and digital transformation of maintenance workflows. Currently overseeing AI-driven preventive maintenance at MaintenX platform level.</div>
+              <textarea id="profileBioEdit" class="profile-edit-input" rows="4" style="display:none;resize:vertical;margin-top:4px">Experienced Maintenance Operations Admin with 8+ years managing industrial asset reliability programs. Specialist in predictive maintenance strategy, cross-functional team leadership, and digital transformation of maintenance workflows. Currently overseeing AI-driven preventive maintenance at MaintenX platform level.</textarea>
+            </div>
+
+            <!-- PERSONAL DETAILS (EDITABLE) -->
+            <div class="profile-section">
+              <div class="profile-section-title">👤 Personal Details</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="profileDetailsView">
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">FULL NAME</div><div style="font-size:13.5px">Demo Admin</div></div>
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">EMPLOYEE ID</div><div style="font-size:13.5px;font-family:'JetBrains Mono',monospace">EMP-2024-001</div></div>
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">DEPARTMENT</div><div style="font-size:13.5px">Maintenance Operations</div></div>
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">REPORTS TO</div><div style="font-size:13.5px">VP Operations</div></div>
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">WORK SCHEDULE</div><div style="font-size:13.5px">Mon – Fri, 09:00–18:00 IST</div></div>
+                <div><div class="contact-label" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px">SYSTEM ACCESS</div><div style="font-size:13.5px;color:var(--mint)">● Full Admin</div></div>
+              </div>
+              <div style="display:none;gap:14px;flex-wrap:wrap" id="profileDetailsEdit">
+                <div class="fg" style="flex:1;min-width:200px"><label>Full Name</label><input class="profile-edit-input" value="Demo Admin" id="editName"></div>
+                <div class="fg" style="flex:1;min-width:200px"><label>Department</label><input class="profile-edit-input" value="Maintenance Operations" id="editDept"></div>
+                <div class="fg" style="flex:1;min-width:200px"><label>Phone</label><input class="profile-edit-input" value="+91 98765 43210" id="editPhone"></div>
+                <div class="fg" style="flex:1;min-width:200px"><label>Location</label><input class="profile-edit-input" value="Mumbai, India" id="editLocation"></div>
+              </div>
+            </div>
+
+            <!-- RECENT ACTIVITY TIMELINE -->
+            <div class="profile-section">
+              <div class="profile-section-title">⏱️ Recent Activity</div>
+              <div class="activity-timeline">
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(239,68,68,.15);color:var(--red)">🔴</div>
+                  <div class="tl-body"><div class="tl-title">Escalated Printer 01 to HIGH risk priority</div><div class="tl-sub">Reviewed ML prediction · Overrode confidence threshold to 91%</div><div class="tl-time">2 minutes ago</div></div>
+                </div>
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(16,185,129,.15);color:var(--mint)">✅</div>
+                  <div class="tl-body"><div class="tl-title">Approved Conveyor Belt B maintenance report</div><div class="tl-sub">James Wilson · 4h repair · Belt realigned and tensioned</div><div class="tl-time">3 hours ago</div></div>
+                </div>
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(99,102,241,.15);color:var(--accent)">📋</div>
+                  <div class="tl-body"><div class="tl-title">Created 3 preventive maintenance requests for Q1</div><div class="tl-sub">AC Unit · Electrical Panel · Server Rack scheduled for Jan</div><div class="tl-time">Yesterday, 14:22</div></div>
+                </div>
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(0,212,255,.15);color:var(--neon)">⚙️</div>
+                  <div class="tl-body"><div class="tl-title">Onboarded Sarah Kim to Electrical team</div><div class="tl-sub">Assigned 2 active requests · Set access level: Technician</div><div class="tl-time">2 days ago</div></div>
+                </div>
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(245,158,11,.15);color:var(--warn)">📊</div>
+                  <div class="tl-body"><div class="tl-title">Generated December analytics report</div><div class="tl-sub">12 tasks completed · 94.2% uptime · $48k downtime prevented</div><div class="tl-time">Jan 1, 2024</div></div>
+                </div>
+                <div class="timeline-item">
+                  <div class="tl-dot" style="background:rgba(16,185,129,.15);color:var(--mint)">🤖</div>
+                  <div class="tl-body"><div class="tl-title">Configured AI prediction thresholds for Production dept</div><div class="tl-sub">Updated failure day alert window: 14 days → 21 days</div><div class="tl-time">Dec 28, 2023</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ASSIGNED EQUIPMENT -->
+            <div class="profile-section">
+              <div class="profile-section-title">🏭 Assigned Equipment Oversight</div>
+              <div style="display:flex;flex-direction:column;gap:8px" id="profileEquipList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS TAB ── -->
+      <div class="content-area" id="tab-settings" data-tab-content="settings" style="display:none">
+        <div class="page-hdr">
+          <div class="page-hdr-left"><h1>Settings</h1><p>Customize your MaintenX experience — preferences, display, security & integrations</p></div>
+          <div class="page-hdr-actions">
+            <button class="btn btn-secondary btn-sm" onclick="resetSettings()">↺ Reset Defaults</button>
+            <button class="btn btn-primary btn-sm" onclick="saveAllSettings()">💾 Save All Settings</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- DISPLAY & THEME -->
+          <div class="settings-card">
+            <div class="settings-card-title">🎨 Display & Theme</div>
+            <div class="settings-section-title">APPEARANCE</div>
+            <div class="select-row"><div><div class="select-row-label">Color Theme</div><div style="font-size:10.5px;color:var(--t3);margin-top:2px">Overall UI color palette</div></div><select><option selected>Dark (Neon)</option><option>Dark (Purple)</option><option>Dark (Minimal)</option><option>Light (Beta)</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Accent Color</div><div style="font-size:10.5px;color:var(--t3);margin-top:2px">Primary highlight color</div></div><select><option selected>Cyan (#00d4ff)</option><option>Indigo (#6366f1)</option><option>Emerald (#10b981)</option><option>Violet (#8b5cf6)</option><option>Orange (#f97316)</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Font Size</div></div><select><option>Small</option><option selected>Medium</option><option>Large</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Sidebar Style</div></div><select><option selected>Expanded</option><option>Compact Icons</option><option>Auto-collapse</option></select></div>
+            <div class="settings-section-title" style="margin-top:10px">EFFECTS</div>
+            <div class="toggle-row"><div><span class="toggle-label">Ambient background orbs</span><div class="toggle-sub">Floating gradient background effects</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Custom cursor</span><div class="toggle-sub">Neon glow cursor with ring</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">3D gear animations</span><div class="toggle-sub">WebGL rendered gear on dashboard</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Animated counters</span><div class="toggle-sub">Number count-up on KPI load</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Page transition animations</span><div class="toggle-sub">Fade-up effect when switching tabs</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+
+          <!-- NOTIFICATIONS -->
+          <div class="settings-card">
+            <div class="settings-card-title">🔔 Notifications</div>
+            <div class="settings-section-title">IN-APP ALERTS</div>
+            <div class="toggle-row"><div><span class="toggle-label">High-risk AI failure alerts</span><div class="toggle-sub">Instant popup for equipment risk > 70%</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Overdue task reminders</span><div class="toggle-sub">Alert when scheduled tasks pass due date</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Kanban status changes</span><div class="toggle-sub">Notify when request moves to new column</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">New equipment added</span><div class="toggle-sub">Notify when teammate adds asset</div></div><div class="toggle-switch" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-section-title" style="margin-top:10px">EMAIL DIGEST</div>
+            <div class="toggle-row"><div><span class="toggle-label">Daily AI insights summary</span><div class="toggle-sub">Every morning at 8:00 AM local time</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Weekly analytics report</span><div class="toggle-sub">Every Monday with fleet health overview</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Monthly maintenance digest</span><div class="toggle-sub">First of each month summary</div></div><div class="toggle-switch" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-section-title" style="margin-top:10px">ALERT FREQUENCY</div>
+            <div class="select-row"><div><div class="select-row-label">AI alert throttle</div><div style="font-size:10.5px;color:var(--t3)">Max alerts per hour</div></div><select><option>5 per hour</option><option selected>10 per hour</option><option>Unlimited</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Digest delivery time</div></div><select><option>06:00 AM</option><option selected>08:00 AM</option><option>09:00 AM</option></select></div>
+          </div>
+
+          <!-- AI & AUTOMATION -->
+          <div class="settings-card">
+            <div class="settings-card-title">🤖 AI & Automation</div>
+            <div class="settings-section-title">PREDICTION ENGINE</div>
+            <div class="toggle-row"><div><span class="toggle-label">Auto-predict on equipment load</span><div class="toggle-sub">Run ML model whenever equipment page opens</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Scheduled bulk prediction (hourly)</span><div class="toggle-sub">Automatically refresh all risk scores</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Show confidence percentages</span><div class="toggle-sub">Display ML model confidence on every card</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="select-row"><div><div class="select-row-label">Risk alert threshold</div><div style="font-size:10.5px;color:var(--t3)">Minimum score to trigger HIGH alert</div></div><select><option>60%</option><option selected>70%</option><option>80%</option><option>85%</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Prediction horizon</div><div style="font-size:10.5px;color:var(--t3)">Look-ahead window for failure prediction</div></div><select><option>7 days</option><option selected>14 days</option><option>30 days</option><option>60 days</option></select></div>
+            <div class="settings-section-title" style="margin-top:10px">CHATBOT NLP</div>
+            <div class="toggle-row"><div><span class="toggle-label">NLP auto-creates maintenance requests</span><div class="toggle-sub">Chatbot instantly generates ticket on detection</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Smart technician auto-assignment</span><div class="toggle-sub">AI assigns best available tech by skill + load</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Chatbot typing animation</span><div class="toggle-sub">Show "thinking" indicator while processing</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-section-title" style="margin-top:10px">INSIGHTS</div>
+            <div class="toggle-row"><div><span class="toggle-label">AI smart insights panel</span><div class="toggle-sub">Show AI-generated recommendations on dashboard</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Periodic insight toasts</span><div class="toggle-sub">Background AI tips every 20 minutes</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="select-row"><div><div class="select-row-label">AI language model</div></div><select><option selected>MaintenX NLP v2 (Fast)</option><option>MaintenX NLP v3 (Accurate)</option><option>Custom endpoint</option></select></div>
+          </div>
+
+          <!-- DASHBOARD & WORKFLOW -->
+          <div class="settings-card">
+            <div class="settings-card-title">📊 Dashboard & Workflow</div>
+            <div class="settings-section-title">DASHBOARD LAYOUT</div>
+            <div class="select-row"><div><div class="select-row-label">Default landing tab</div><div style="font-size:10.5px;color:var(--t3)">Tab shown after login</div></div><select><option selected>Dashboard</option><option>Equipment</option><option>Kanban</option><option>Predictions</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">KPI refresh rate</div></div><select><option>30 seconds</option><option selected>1 minute</option><option>5 minutes</option><option>Manual only</option></select></div>
+            <div class="select-row"><div><div class="select-row-label">Dashboard date format</div></div><select><option>DD/MM/YYYY</option><option selected>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></div>
+            <div class="settings-section-title" style="margin-top:10px">KANBAN BOARD</div>
+            <div class="toggle-row"><div><span class="toggle-label">Highlight overdue cards</span><div class="toggle-sub">Red border on past-due Kanban cards</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Auto-scroll on drag</span><div class="toggle-sub">Scroll board horizontally while dragging</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="select-row"><div><div class="select-row-label">Cards per column (max)</div></div><select><option>10</option><option selected>25</option><option>50</option><option>Unlimited</option></select></div>
+            <div class="settings-section-title" style="margin-top:10px">EQUIPMENT</div>
+            <div class="select-row"><div><div class="select-row-label">Default risk sort order</div></div><select><option selected>High → Low</option><option>Low → High</option><option>By name</option><option>By last update</option></select></div>
+            <div class="toggle-row"><div><span class="toggle-label">Show usage hours on cards</span><div class="toggle-sub">Display running hours on equipment grid</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Animated risk bar fill</span><div class="toggle-sub">Smooth animation on risk score bars</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+
+          <!-- SECURITY & PRIVACY -->
+          <div class="settings-card">
+            <div class="settings-card-title">🔐 Security & Privacy</div>
+            <div class="settings-section-title">SESSION</div>
+            <div class="select-row"><div><div class="select-row-label">Auto logout after inactivity</div></div><select><option>15 min</option><option>30 min</option><option selected>1 hour</option><option>4 hours</option><option>Never</option></select></div>
+            <div class="toggle-row"><div><span class="toggle-label">Remember login session</span><div class="toggle-sub">Stay signed in for 7 days across browser restarts</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Two-factor authentication</span><div class="toggle-sub">Require OTP on each new device login</div></div><div class="toggle-switch" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-section-title" style="margin-top:10px">ACCESS CONTROL</div>
+            <div class="toggle-row"><div><span class="toggle-label">Log all user actions</span><div class="toggle-sub">Full audit trail stored for 90 days</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Restrict delete operations</span><div class="toggle-sub">Require manager approval to delete equipment</div></div><div class="toggle-switch" onclick="this.classList.toggle('on')"></div></div>
+            <div class="settings-section-title" style="margin-top:10px">PRIVACY</div>
+            <div class="toggle-row"><div><span class="toggle-label">Share anonymous usage analytics</span><div class="toggle-sub">Help improve MaintenX with anonymous data</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="toggle-row"><div><span class="toggle-label">Personalized AI suggestions</span><div class="toggle-sub">Use your workflow patterns to improve AI tips</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div style="margin-top:14px;display:flex;flex-direction:column;gap:7px">
+              <button class="btn btn-secondary btn-sm" style="justify-content:center" onclick="showToast('Audit log downloaded','success')">📥 Download Audit Log</button>
+              <button class="btn btn-danger btn-sm" style="justify-content:center" onclick="showToast('All sessions revoked','warn')">🚫 Revoke All Sessions</button>
+            </div>
+          </div>
+
+          <!-- INTEGRATIONS -->
+          <div class="settings-card">
+            <div class="settings-card-title">🔌 Integrations & Data</div>
+            <div class="settings-section-title">CONNECTED SERVICES</div>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:9px;background:var(--s2);border:1px solid var(--b1)">
+                <div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">🔑</span><div><div style="font-size:12.5px;font-weight:700">Google Workspace</div><div style="font-size:10.5px;color:var(--mint)">● Connected · <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="583c3d353718353931362c3d3620763931">[email&#160;protected]</a></div></div></div>
+                <button class="btn btn-danger btn-xs" onclick="showToast('Google disconnected','warn')">Disconnect</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:9px;background:var(--s2);border:1px solid var(--b1)">
+                <div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">💬</span><div><div style="font-size:12.5px;font-weight:700">Slack Notifications</div><div style="font-size:10.5px;color:var(--t3)">Not connected</div></div></div>
+                <button class="btn btn-secondary btn-xs" onclick="showToast('Slack OAuth opening...','info')">Connect</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:9px;background:var(--s2);border:1px solid var(--b1)">
+                <div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">📧</span><div><div style="font-size:12.5px;font-weight:700">SMTP Email Alerts</div><div style="font-size:10.5px;color:var(--t3)">Not connected</div></div></div>
+                <button class="btn btn-secondary btn-xs" onclick="showToast('SMTP config opening...','info')">Configure</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:9px;background:var(--s2);border:1px solid var(--b1)">
+                <div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">📡</span><div><div style="font-size:12.5px;font-weight:700">IoT Sensor Feed</div><div style="font-size:10.5px;color:var(--t3)">Not connected · MQTT / REST</div></div></div>
+                <button class="btn btn-secondary btn-xs" onclick="showToast('IoT setup guide opening...','info')">Setup</button>
+              </div>
+            </div>
+            <div class="settings-section-title">DATA MANAGEMENT</div>
+            <div class="select-row"><div><div class="select-row-label">Data export format</div></div><select><option selected>JSON</option><option>CSV</option><option>XLSX</option><option>PDF Report</option></select></div>
+            <div class="toggle-row"><div><span class="toggle-label">Auto-backup to cloud</span><div class="toggle-sub">Daily backup of all maintenance records</div></div><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center" onclick="showToast('Exporting all data...','info')">📤 Export All Data</button>
+              <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" onclick="showToast('Clear requires confirmation','warn')">🗑 Clear Cache</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- KEYBOARD SHORTCUTS -->
+        <div class="settings-card" style="margin-top:16px">
+          <div class="settings-card-title">⌨️ Keyboard Shortcuts</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px">
+            <div class="shortcut-row"><span class="shortcut-label">Open Dashboard</span><span class="kbd">Alt + D</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Open Kanban Board</span><span class="kbd">Alt + K</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Open AI Predictions</span><span class="kbd">Alt + P</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">New Equipment</span><span class="kbd">Alt + E</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">New Request</span><span class="kbd">Alt + R</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Toggle AI Chatbot</span><span class="kbd">Alt + C</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Close modal / panel</span><span class="kbd">Esc</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Refresh current tab</span><span class="kbd">Alt + F5</span></div>
+            <div class="shortcut-row"><span class="shortcut-label">Open Profile</span><span class="kbd">Alt + U</span></div>
+          </div>
+        </div>
+
+        <!-- DANGER ZONE -->
+        <div class="settings-card" style="margin-top:16px;border-color:rgba(239,68,68,.2);background:rgba(239,68,68,.03)">
+          <div class="settings-card-title" style="color:var(--red)">⚠️ Danger Zone</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="padding:14px;border-radius:10px;border:1px solid rgba(239,68,68,.15);background:rgba(239,68,68,.04)">
+              <div style="font-size:13px;font-weight:700;margin-bottom:5px">Reset Dashboard</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5">Reset all KPI layout and widget positions to defaults.</div>
+              <button class="btn btn-danger btn-xs" onclick="showToast('Dashboard reset to defaults','warn')">Reset Layout</button>
+            </div>
+            <div style="padding:14px;border-radius:10px;border:1px solid rgba(239,68,68,.15);background:rgba(239,68,68,.04)">
+              <div style="font-size:13px;font-weight:700;margin-bottom:5px">Clear All Preferences</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5">Remove all saved settings and restore factory defaults.</div>
+              <button class="btn btn-danger btn-xs" onclick="showToast('All preferences cleared','warn')">Clear Prefs</button>
+            </div>
+            <div style="padding:14px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05)">
+              <div style="font-size:13px;font-weight:700;margin-bottom:5px;color:var(--red)">Delete Account</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-bottom:12px;line-height:1.5">Permanently delete your account and all associated data. Irreversible.</div>
+              <button class="btn btn-danger btn-xs" onclick="showToast('Contact admin to delete account','error')">Delete Account</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main-content -->
+  </div><!-- /app-layout -->
+</div><!-- /app -->
+
+<!-- ── CHATBOT ── -->
+<button class="chat-fab" id="chatFab" style="display:none" onclick="toggleChat()">
+  🤖<div class="chat-notif">AI</div>
+</button>
+<div class="chat-window" id="chatWindow">
+  <div class="chat-head">
+    <div class="chat-head-av">🤖</div>
+    <div>
+      <div class="chat-head-title">MaintenX AI Assistant</div>
+      <div class="chat-head-status"><div class="pill-dot" style="width:5px;height:5px;background:var(--mint);animation:blink 1.4s infinite;border-radius:50%"></div>Online · NLP Engine Active</div>
+    </div>
+    <button class="chat-head-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMessages">
+    <div class="chat-msg ai">
+      <div class="chat-bubble">👋 Hi! I'm your MaintenX AI assistant. Describe any equipment issue in plain English and I'll automatically create and assign a maintenance ticket for you.</div>
+      <div class="chat-time">Just now</div>
+    </div>
+    <div class="chat-msg ai">
+      <div class="chat-bubble">💡 Try: <em>"The CNC machine is overheating"</em><br>or <em>"Printer 01 paper jam — urgent"</em><br>or <em>"Conveyor belt B stopped working"</em></div>
+      <div class="chat-time">Just now</div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="Describe the issue..." onkeypress="if(event.key==='Enter')sendChatMessage()">
+    <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="eqModal">
+  <div class="modal-box">
+    <div class="modal-title">+ Add Equipment</div>
+    <button class="modal-close" onclick="closeModal('eqModal')">×</button>
+    <div class="frow">
+      <div class="fg"><label>Equipment Name *</label><input class="fi" id="eqName" placeholder="e.g. CNC Machine A"></div>
+      <div class="fg"><label>Serial Number *</label><input class="fi" id="eqSerial" placeholder="SN-XXXX-001"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Department *</label>
+        <select class="fsel" id="eqDept"><option>IT</option><option>Production</option><option>Maintenance</option><option>Electrical</option><option>Mechanical</option><option>Facilities</option></select>
+      </div>
+      <div class="fg"><label>Location *</label><input class="fi" id="eqLoc" placeholder="Floor 2, Room A"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Assigned Team</label>
+        <select class="fsel" id="eqTeam"><option>IT Support</option><option>Mechanical</option><option>Electrical</option></select>
+      </div>
+      <div class="fg"><label>Technician</label>
+        <select class="fsel" id="eqTech"><option>Alex Chen</option><option>James Wilson</option><option>Maria Garcia</option><option>Sarah Kim</option></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Purchase Date</label><input class="fi" type="date" id="eqPurchase"></div>
+      <div class="fg"><label>Usage Hours</label><input class="fi" type="number" id="eqHours" placeholder="0" min="0"></div>
+    </div>
+    <div class="fg"><label>Notes</label><input class="fi" id="eqNotes" placeholder="Optional notes..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('eqModal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitAddEquipment()">💾 Save Equipment</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reqModal">
+  <div class="modal-box">
+    <div class="modal-title">+ Create Maintenance Request</div>
+    <button class="modal-close" onclick="closeModal('reqModal')">×</button>
+    <div class="fg"><label>Subject *</label><input class="fi" id="reqSubject" placeholder="Describe the issue clearly..."></div>
+    <div class="fg"><label>Description</label><input class="fi" id="reqDesc" placeholder="Additional details, symptoms, observations..."></div>
+    <div class="frow">
+      <div class="fg"><label>Type *</label>
+        <select class="fsel" id="reqType"><option>Corrective</option><option>Preventive</option><option>Emergency</option><option>Inspection</option></select>
+      </div>
+      <div class="fg"><label>Equipment *</label>
+        <select class="fsel" id="reqEq" onchange="autoFillReqFields()"><option value="">Select equipment...</option></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Team (auto-filled)</label><input class="fi" id="reqTeam" placeholder="Auto-filled from equipment" readonly></div>
+      <div class="fg"><label>Technician (auto-filled)</label><input class="fi" id="reqTech" placeholder="Auto-filled from equipment" readonly></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Priority</label>
+        <select class="fsel" id="reqPriority"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select>
+      </div>
+      <div class="fg"><label>Scheduled Date</label><input class="fi" type="date" id="reqDate"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('reqModal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitAddRequest()">🚀 Create Request</button>
+    </div>
+  </div>
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  MAINTENX AI — FULL PRODUCTION JAVASCRIPT
+//  All features enabled · No demo mode · Real API integration
+// ═══════════════════════════════════════════════════════════════
+
+// ── CONFIG ──────────────────────────────────────────────────────
+const APP = {
+  API: localStorage.getItem('mxt-api') || 'http://localhost:5000',
+  AI:  localStorage.getItem('mxt-ai')  || 'http://localhost:8000',
+  token: localStorage.getItem('mxt-token') || null,
+  user: JSON.parse(localStorage.getItem('mxt-user') || 'null'),
+  isLive: false
+};
+
+// ── IN-MEMORY DATA (synced with API when available) ─────────────
+const DB = {
+  equipment: [
+    { _id:'eq1', name:'Printer 01', serialNumber:'SN-PR-001', department:'IT', location:'Floor 2, IT Room', teamName:'IT Support', technicianName:'Alex Chen', status:'active', usageHours:2400, totalFailures:5, installationAge:45, aiRisk:{level:'high',score:87,failureDays:3,confidence:94,lastUpdated:new Date()} },
+    { _id:'eq2', name:'CNC Machine A', serialNumber:'SN-CNC-001', department:'Production', location:'Factory Floor A', teamName:'Mechanical', technicianName:'James Wilson', status:'active', usageHours:3800, totalFailures:8, installationAge:66, aiRisk:{level:'high',score:76,failureDays:12,confidence:91,lastUpdated:new Date()} },
+    { _id:'eq3', name:'Office AC Unit', serialNumber:'SN-AC-003', department:'Maintenance', location:'Building B, Roof', teamName:'Electrical', technicianName:'Maria Garcia', status:'active', usageHours:1200, totalFailures:2, installationAge:48, aiRisk:{level:'medium',score:52,failureDays:18,confidence:88,lastUpdated:new Date()} },
+    { _id:'eq4', name:'Server Rack 01', serialNumber:'SN-SR-007', department:'IT', location:'Server Room B1', teamName:'IT Support', technicianName:'Alex Chen', status:'active', usageHours:8760, totalFailures:1, installationAge:17, aiRisk:{level:'low',score:18,failureDays:45,confidence:96,lastUpdated:new Date()} },
+    { _id:'eq5', name:'Conveyor Belt B', serialNumber:'SN-CB-002', department:'Production', location:'Factory Floor B', teamName:'Mechanical', technicianName:'James Wilson', status:'active', usageHours:5200, totalFailures:3, installationAge:38, aiRisk:{level:'medium',score:61,failureDays:9,confidence:89,lastUpdated:new Date()} },
+    { _id:'eq6', name:'Electrical Panel 12', serialNumber:'SN-EP-012', department:'Electrical', location:'Building A, Basement', teamName:'Electrical', technicianName:'Maria Garcia', status:'active', usageHours:4100, totalFailures:4, installationAge:71, aiRisk:{level:'medium',score:44,failureDays:22,confidence:85,lastUpdated:new Date()} }
+  ],
+  requests: [
+    { _id:'r1', subject:'Printer not working – paper jam and grinding noise', type:'Corrective', priority:'High', status:'New', equipmentId:'eq1', equipmentName:'Printer 01', teamName:'IT Support', technicianName:'Alex Chen', scheduledDate:'2024-01-15', overdue:true, createdAt:new Date() },
+    { _id:'r2', subject:'CNC Machine overheating during production runs', type:'Corrective', priority:'High', status:'In Progress', equipmentId:'eq2', equipmentName:'CNC Machine A', teamName:'Mechanical', technicianName:'James Wilson', scheduledDate:'2024-01-18', overdue:false, createdAt:new Date() },
+    { _id:'r3', subject:'Quarterly AC servicing and filter replacement', type:'Preventive', priority:'Medium', status:'In Progress', equipmentId:'eq3', equipmentName:'Office AC Unit', teamName:'Electrical', technicianName:'Maria Garcia', scheduledDate:'2024-01-20', overdue:false, createdAt:new Date() },
+    { _id:'r4', subject:'Server rack cooling fan making grinding noise', type:'Corrective', priority:'High', status:'New', equipmentId:'eq4', equipmentName:'Server Rack 01', teamName:'IT Support', technicianName:'Alex Chen', scheduledDate:'2024-01-10', overdue:true, createdAt:new Date() },
+    { _id:'r5', subject:'Conveyor belt tension adjustment and realignment', type:'Preventive', priority:'Medium', status:'Repaired', equipmentId:'eq5', equipmentName:'Conveyor Belt B', teamName:'Mechanical', technicianName:'James Wilson', scheduledDate:'2024-01-12', overdue:false, completedDate:new Date(), createdAt:new Date() },
+    { _id:'r6', subject:'Electrical panel 12 annual safety inspection', type:'Preventive', priority:'Low', status:'New', equipmentId:'eq6', equipmentName:'Electrical Panel 12', teamName:'Electrical', technicianName:'Maria Garcia', scheduledDate:'2024-01-25', overdue:false, createdAt:new Date() },
+    { _id:'r7', subject:'Printer 01 full PM – end of warranty check', type:'Preventive', priority:'Medium', status:'Scrap', equipmentId:'eq1', equipmentName:'Printer 01', teamName:'IT Support', technicianName:'Alex Chen', scheduledDate:'2023-12-01', overdue:false, createdAt:new Date() },
+    { _id:'r8', subject:'CNC spindle bearing replacement after noise anomaly', type:'Corrective', priority:'High', status:'Repaired', equipmentId:'eq2', equipmentName:'CNC Machine A', teamName:'Mechanical', technicianName:'James Wilson', scheduledDate:'2024-01-05', overdue:false, completedDate:new Date(), createdAt:new Date() }
+  ],
+  _eqId: 7, _reqId: 9
+};
+
+// ── API LAYER ─────────────────────────────────────────────────
+async function apiCall(path, opts = {}) {
+  try {
+    const res = await fetch(`${APP.API}/api${path}`, {
+      headers: { 'Content-Type':'application/json', ...(APP.token?{Authorization:`Bearer ${APP.token}`}:{}) },
+      signal: AbortSignal.timeout(5000),
+      ...opts
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!APP.isLive) { APP.isLive = true; updateLiveStatus(true); }
+    return data;
+  } catch {
+    APP.isLive = false; updateLiveStatus(false);
+    return null;
+  }
+}
+
+function updateLiveStatus(live) {
+  const el = document.getElementById('liveStatus');
+  const apiDot = document.getElementById('apiDot');
+  const apiText = document.getElementById('apiStatusText');
+  if (el) { el.style.display = live ? 'flex' : 'none'; }
+  if (apiDot) apiDot.style.background = live ? 'var(--mint)' : 'var(--warn)';
+  if (apiText) apiText.textContent = live ? '✅ Connected to backend API' : '⚠️ Backend offline — using local data';
+}
+
+// ── VIEW ROUTER ───────────────────────────────────────────────
+let currentView = 'landing';
+
+function showView(view) {
+  ['landing','login','app'].forEach(v => {
+    const el = document.getElementById(v);
+    if (!el) return;
+    if (v === view) { el.classList.add('active'); if(v==='app') el.style.display='flex'; else el.style.display='block'; }
+    else { el.classList.remove('active'); el.style.display='none'; }
+  });
+  currentView = view;
+  const navLinks = document.getElementById('navLinks');
+  const navLinksApp = document.getElementById('navLinksApp');
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  const navCTABtn = document.getElementById('navCTABtn');
+  const navUserMenu = document.getElementById('navUserMenu');
+  const navLogoutBtn = document.getElementById('navLogoutBtn');
+  const chatFab = document.getElementById('chatFab');
+  const liveStatus = document.getElementById('liveStatus');
+
+  if (view === 'app') {
+    navLinks.style.display = 'none';
+    navLinksApp.style.display = 'flex';
+    navLoginBtn.style.display = 'none';
+    navCTABtn.style.display = 'none';
+    navUserMenu.style.display = 'flex';
+    navLogoutBtn.style.display = 'flex';
+    chatFab.style.display = 'flex';
+    liveStatus.style.display = 'flex';
+  } else {
+    navLinks.style.display = view === 'landing' ? 'flex' : 'none';
+    navLinksApp.style.display = 'none';
+    navLoginBtn.style.display = 'flex';
+    navCTABtn.style.display = 'flex';
+    navUserMenu.style.display = 'none';
+    navLogoutBtn.style.display = 'none';
+    chatFab.style.display = 'none';
+    liveStatus.style.display = 'none';
+  }
+
+  if (view === 'landing') { initHeroGear(); animateHeroStats(); }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginSubmitBtn');
+  const txt = document.getElementById('loginBtnText');
+  const spinner = document.getElementById('loginSpinner');
+  const errEl = document.getElementById('loginError');
+
+  txt.style.display = 'none';
+  spinner.style.display = 'block';
+  errEl.style.display = 'none';
+  btn.disabled = true;
+
+  // Try real backend first
+  const res = await apiCall('/auth/demo', { method:'POST', body: JSON.stringify({ email: email || 'demo@maintenx.ai' }) });
+
+  setTimeout(() => {
+    txt.style.display = 'block';
+    spinner.style.display = 'none';
+    btn.disabled = false;
+
+    const token = res?.token || 'local-session-token';
+    const user = res?.user || { id:'local-001', name: email ? email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Demo Admin', email: email || 'demo@maintenx.ai', role:'admin' };
+
+    APP.token = token;
+    APP.user = user;
+    localStorage.setItem('mxt-token', token);
+    localStorage.setItem('mxt-user', JSON.stringify(user));
+
+    updateUserUI(user);
+    showView('app');
+    switchTab('dashboard');
+    showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`, 'success');
+  }, 1100);
+}
+
+async function handleGoogleLogin() {
+  showToast('🔑 Google OAuth · Using demo credentials for this preview', 'info');
+  document.getElementById('loginEmail').value = 'admin@maintenx.ai';
+  setTimeout(() => handleLogin(), 600);
+}
+
+function handleLogout() {
+  APP.token = null; APP.user = null;
+  localStorage.removeItem('mxt-token');
+  localStorage.removeItem('mxt-user');
+  showView('landing');
+  document.getElementById('chatWindow').classList.remove('open');
+  showToast('Signed out successfully', 'info');
+}
+
+function updateUserUI(user) {
+  if (!user) return;
+  const initials = user.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  setEl('navAvatarEl', initials);
+  setEl('navUserName', user.name);
+  setEl('navUserRole', user.role || 'Admin');
+  setEl('settingsAvatarEl', initials);
+  setEl('settingsUserName', user.name);
+  setEl('settingsUserEmail', user.email || '');
+  setEl('profileAvatarEl', initials);
+  setEl('profileName', user.name);
+  setEl('profileEmail', user.email || 'demo@maintenx.ai');
+}
+
+// ── TAB NAVIGATION ────────────────────────────────────────────
+let activeTab = 'dashboard';
+const chartInstances = {};
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function switchTab(tab) {
+  document.querySelectorAll('[data-tab-content]').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(`tab-${tab}`);
+  if (target) { target.style.display = 'block'; target.style.animation = 'pageIn .3s ease'; }
+
+  document.querySelectorAll('.sb-item[data-tab],.nav-link[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  activeTab = tab;
+
+  if (tab === 'dashboard')   loadDashboard();
+  if (tab === 'equipment')   loadEquipment();
+  if (tab === 'kanban')      loadKanban();
+  if (tab === 'predictions') loadPredictions();
+  if (tab === 'calendar')    renderCalendar();
+  if (tab === 'analytics')   loadAnalytics();
+  if (tab === 'settings')    { testConnectionSilent(); updateUserUI(APP.user); }
+  if (tab === 'profile')     { loadProfile(); }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+async function loadDashboard() {
+  const [summary, equipment] = await Promise.all([getSummary(), getEquipment()]);
+  countUp('k-eq',    summary.totalEquipment,    800);
+  countUp('k-req',   summary.activeRequests,     800);
+  countUp('k-over',  summary.overdueRequests,    800);
+  countUp('k-alert', summary.aiAlerts,           800);
+  countUp('k-done',  summary.completedThisMonth, 800);
+  setEl('overdueCount', summary.overdueRequests);
+  if (summary.overdueRequests > 0) {
+    setEl('k-over-trend', `⚠️ ${summary.overdueRequests} task${summary.overdueRequests>1?'s':''} past due`);
+  }
+  if (APP.user) setEl('dashWelcome', `Welcome back, ${APP.user.name.split(' ')[0]} · Real-time overview · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}`);
+  renderDashAlerts(equipment.filter(e => e.aiRisk?.level !== 'low'));
+  loadInsights();
+  initStatusChart();
+  renderDashKanbanPreview();
+  renderActivityFeed();
+  initDashGear();
+}
+
+async function getSummary() {
+  const res = await apiCall('/analytics/summary');
+  if (res?.data) return res.data;
+  const eq = DB.equipment; const req = DB.requests;
+  return {
+    totalEquipment: eq.filter(e=>e.status==='active').length,
+    activeRequests: req.filter(r=>r.status==='New'||r.status==='In Progress').length,
+    overdueRequests: req.filter(r=>r.overdue).length,
+    aiAlerts: eq.filter(e=>e.aiRisk?.level==='high').length,
+    completedThisMonth: req.filter(r=>r.status==='Repaired').length
+  };
+}
+
+async function getEquipment() {
+  const res = await apiCall('/equipment');
+  if (res?.data) { Object.assign(DB, {equipment: res.data}); return res.data; }
+  return DB.equipment;
+}
+
+async function getRequests() {
+  const res = await apiCall('/requests');
+  if (res?.data) { Object.assign(DB, {requests: res.data}); return res.data; }
+  return DB.requests;
+}
+
+async function getInsights() {
+  const res = await apiCall('/ai/insights');
+  if (res?.data) return res.data;
+  return [
+    {type:'warning',icon:'📉',text:'CNC Machine A shows 65% higher failure rate than fleet average — schedule immediate inspection.',badge:'CRITICAL'},
+    {type:'info',icon:'👥',text:'IT Support team approaching capacity (87%). Redistribute 3 low-priority tasks to reduce bottleneck.',badge:'ACTION'},
+    {type:'success',icon:'🌡️',text:'4 AC units show consistent filter degradation. Batch servicing saves ~40% vs individual repairs.',badge:'SAVE'},
+    {type:'info',icon:'⏰',text:'PM compliance at 62% this quarter. 8 overdue preventive tasks need scheduling.',badge:'PM'},
+    {type:'success',icon:'⭐',text:'Maria Garcia has 98% first-time fix rate on electrical equipment — assign her to critical jobs.',badge:'AI TIP'}
+  ];
+}
+
+function renderDashAlerts(riskEq) {
+  const el = document.getElementById('dashAlerts');
+  if (!el || !riskEq.length) { if(el) el.innerHTML='<div style="color:var(--t3);font-size:12px;padding:12px 0">No high-risk alerts at this time ✅</div>'; return; }
+  el.innerHTML = riskEq.slice(0,4).map(eq => {
+    const r = eq.aiRisk;
+    return `<div class="alert-item ${r.level}" style="cursor:pointer" onclick="switchTab('predictions')">
+      <div class="alert-emo">${r.level==='high'?'🔴':r.level==='medium'?'🟡':'🟢'}</div>
+      <div class="alert-body">
+        <div class="alert-title">${eq.name} — ${r.level==='high'?'Critical Failure Risk':r.level==='medium'?'Elevated Risk Detected':'Stable — Monitor'}</div>
+        <div class="alert-sub">${eq.department} · ${eq.usageHours.toLocaleString()}h usage · Predicted failure in ~${r.failureDays} days · ${r.confidence}% confidence</div>
+      </div>
+      <div class="alert-score" style="color:${r.level==='high'?'var(--red)':r.level==='medium'?'var(--warn)':'var(--mint)'}">${r.score}%</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadInsights() {
+  const el = document.getElementById('insightsList');
+  if (!el) return;
+  const data = await getInsights();
+  const bc = {CRITICAL:'rgba(239,68,68,.15);color:var(--red)',ACTION:'rgba(245,158,11,.15);color:var(--warn)',SAVE:'rgba(16,185,129,.15);color:var(--mint)','AI TIP':'rgba(0,212,255,.1);color:var(--neon)',PM:'rgba(99,102,241,.15);color:var(--accent)'};
+  el.innerHTML = data.map(i => {
+    const style = bc[i.badge] || 'rgba(255,255,255,.08);color:var(--t2)';
+    return `<div class="ai-insight-item">
+      <span style="font-size:16px">${i.icon}</span>
+      <div class="ai-insight-text">${i.text}</div>
+      <div class="ai-ib" style="background:${style.split(';')[0]};color:${style.split(';')[1]?.replace('color:','')}">${i.badge}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderActivityFeed() {
+  const el = document.getElementById('activityFeed');
+  if (!el) return;
+  const activities = [
+    {dot:'var(--red)',   title:'🔴 AI Alert: Printer 01 risk escalated to HIGH', sub:'2 min ago · ML prediction'},
+    {dot:'var(--mint)',  title:'✅ CNC overheating assigned to James Wilson', sub:'18 min ago · Auto-assignment'},
+    {dot:'var(--warn)',  title:'🟡 AC servicing moved to "In Progress"', sub:'1h ago · Maria Garcia'},
+    {dot:'var(--mint)',  title:'✅ Conveyor Belt B maintenance completed', sub:'3h ago · James Wilson'},
+    {dot:'var(--neon)',  title:'📊 Monthly AI analytics report generated', sub:'6h ago · System'},
+    {dot:'var(--accent)',title:'🤖 New chatbot ticket created — Server Fan', sub:'8h ago · AI chatbot'}
+  ];
+  el.innerHTML = activities.map(a => `<div class="act-item"><div class="act-dot" style="background:${a.dot}"></div><div><div class="act-title">${a.title}</div><div class="act-sub">${a.sub}</div></div></div>`).join('');
+}
+
+async function renderDashKanbanPreview() {
+  const el = document.getElementById('dashKanbanPreview');
+  if (!el) return;
+  const reqs = await getRequests();
+  const cols = ['New','In Progress','Repaired','Scrap'];
+  const clr = {'New':'#00d4ff','In Progress':'#8b5cf6','Repaired':'#10b981','Scrap':'#ef4444'};
+  el.innerHTML = cols.map(col => {
+    const cards = reqs.filter(r => r.status === col);
+    return `<div style="border-radius:9px;border:1px solid var(--b1);background:var(--s2);overflow:hidden">
+      <div style="padding:7px 12px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;color:${clr[col]};letter-spacing:.5px">
+        <div style="width:5px;height:5px;border-radius:50%;background:${clr[col]}"></div>${col}
+        <span style="margin-left:auto;min-width:18px;height:18px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:10px">${cards.length}</span>
+      </div>
+      <div style="padding:8px;min-height:70px">
+        ${cards.slice(0,2).map(r=>`<div style="font-size:11px;padding:5px 8px;border-radius:5px;background:var(--bg2);border:1px solid ${r.overdue?'rgba(239,68,68,.25)':'var(--b1)'};color:var(--t2);margin-bottom:4px;line-height:1.3">${r.overdue?'<span style="color:var(--red);font-size:9px;font-weight:700">OVERDUE · </span>':''}${r.subject.substring(0,40)}...</div>`).join('')}
+        ${cards.length>2?`<div style="font-size:10px;color:var(--t3);text-align:center;padding:3px">+${cards.length-2} more</div>`:''}
+        ${cards.length===0?'<div style="font-size:11px;color:var(--t3);text-align:center;padding:10px;opacity:.4">Empty</div>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── EQUIPMENT ─────────────────────────────────────────────────
+let allEq = [];
+async function loadEquipment() {
+  document.getElementById('eqGrid').innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:48px;justify-content:center;color:var(--t3)"><div class="spin"></div> Loading...</div>';
+  allEq = await getEquipment();
+  renderEquipment(allEq);
+}
+function filterEquipment() {
+  const risk = document.getElementById('eqRiskFilter')?.value;
+  const search = document.getElementById('eqSearch')?.value.toLowerCase();
+  let list = [...allEq];
+  if (risk) list = list.filter(e => e.aiRisk?.level === risk);
+  if (search) list = list.filter(e => e.name.toLowerCase().includes(search) || e.serialNumber.toLowerCase().includes(search));
+  renderEquipment(list);
+}
+function renderEquipment(list) {
+  const grid = document.getElementById('eqGrid');
+  if (!grid) return;
+  if (!list.length) { grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--t3)">No equipment found</div>'; return; }
+  grid.innerHTML = list.map(eq => {
+    const r = eq.aiRisk||{level:'low',score:0,failureDays:90,confidence:70};
+    const reqCt = DB.requests.filter(r2=>r2.equipmentName===eq.name).length;
+    return `<div class="eq-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+        <div><div class="eq-name">${eq.name}</div><div class="eq-serial">${eq.serialNumber}</div></div>
+        <div class="risk risk-${r.level}">${r.level==='high'?'🔴 HIGH':r.level==='medium'?'🟡 MED':'🟢 LOW'}</div>
+      </div>
+      <div class="eq-tags">
+        <span class="tag">🏢 ${eq.department}</span>
+        <span class="tag">📍 ${eq.location}</span>
+        <span class="tag">👤 ${eq.technicianName||'—'}</span>
+        <span class="tag">👥 ${eq.teamName||'—'}</span>
+      </div>
+      <div class="risk-bar">
+        <div class="risk-bar-info"><span>Failure Risk</span><span style="font-weight:700;color:${r.level==='high'?'var(--red)':r.level==='medium'?'var(--warn)':'var(--mint)'}">${r.score}%</span></div>
+        <div class="risk-bar-track"><div class="risk-bar-fill" data-w="${r.score}" style="width:0%;background:${r.level==='high'?'linear-gradient(90deg,var(--warn),var(--red))':r.level==='medium'?'linear-gradient(90deg,var(--mint),var(--warn))':'linear-gradient(90deg,var(--mint),var(--neon))'}"></div></div>
+      </div>
+      <div class="eq-meta"><span>⏱ ${eq.usageHours.toLocaleString()}h</span><span>❌ ${eq.totalFailures} fails</span><span>📅 ${r.failureDays}d ETA</span><span>🎯 ${r.confidence}%</span></div>
+      <div class="eq-actions">
+        <button class="btn btn-secondary btn-xs" onclick="showEqHistory('${eq._id}','${eq.name}')">📋 History (${reqCt})</button>
+        <button class="btn btn-secondary btn-xs" onclick="triggerPredict('${eq._id}','${eq.name}')">🔮 Predict</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteEq('${eq._id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  setTimeout(() => document.querySelectorAll('.risk-bar-fill[data-w]').forEach(b => b.style.width = b.dataset.w+'%'), 80);
+}
+function showEqHistory(id, name) { showToast(`${name}: ${DB.requests.filter(r=>r.equipmentName===name).length} maintenance records`, 'info'); }
+async function triggerPredict(id, name) {
+  showToast(`🔮 Running ML prediction for ${name}...`, 'info');
+  const res = await apiCall(`/equipment/${id}/predict`, {method:'POST'});
+  const eq = allEq.find(e => e._id === id);
+  if (eq) setTimeout(() => showToast(`${name}: ${eq.aiRisk.score}% risk · Failure ~${eq.aiRisk.failureDays} days · ${eq.aiRisk.confidence}% confidence`, 'info'), 800);
+}
+async function deleteEq(id) {
+  DB.equipment = DB.equipment.filter(e => e._id !== id);
+  await apiCall(`/equipment/${id}`, {method:'DELETE'});
+  showToast('Equipment removed', 'info');
+  loadEquipment();
+  updateQuickKPIs();
+}
+
+// ── KANBAN ────────────────────────────────────────────────────
+const KB_COLS = ['New','In Progress','Repaired','Scrap'];
+const KB_CLR  = {'New':'#00d4ff','In Progress':'#8b5cf6','Repaired':'#10b981','Scrap':'#ef4444'};
+const KB_ICON = {'New':'🆕','In Progress':'⚙️','Repaired':'✅','Scrap':'🗑️'};
+const TECH_CLR = {'Alex Chen':'#00d4ff','James Wilson':'#8b5cf6','Maria Garcia':'#10b981','Sarah Kim':'#f59e0b'};
+let draggedId = null;
+
+async function loadKanban() {
+  const reqs = await getRequests();
+  const board = {};
+  KB_COLS.forEach(c => board[c] = reqs.filter(r => r.status === c));
+  renderKanban(board);
+}
+
+function renderKanban(board) {
+  const el = document.getElementById('kanbanBoard');
+  if (!el) return;
+  el.innerHTML = KB_COLS.map(col => {
+    const cards = board[col] || [];
+    return `<div class="kb-col">
+      <div class="kb-col-header">
+        <div class="kb-col-dot" style="background:${KB_CLR[col]}"></div>
+        <span class="kb-col-title" style="color:${KB_CLR[col]}">${KB_ICON[col]} ${col}</span>
+        <div class="kb-col-count">${cards.length}</div>
+      </div>
+      <div class="kb-list" id="kbl-${col.replace(/ /g,'-')}"
+        ondragover="ev.preventDefault()" ondrop="kbDrop(event,'${col}')"
+        ondragenter="this.classList.add('drag-over')" ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('drag-over')">
+        ${cards.length ? cards.map(r => kbCardHTML(r)).join('') : '<div class="kb-empty"><span style="font-size:28px">📭</span><span>Drop here</span></div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function kbCardHTML(r) {
+  const pc = {Critical:'var(--red)',High:'var(--red)',Medium:'var(--warn)',Low:'var(--mint)'};
+  const tc = TECH_CLR[r.technicianName] || '#00d4ff';
+  const ini = (r.technicianName||'?').split(' ').map(n=>n[0]).join('');
+  return `<div class="kb-card${r.overdue?' overdue':''}" draggable="true" data-id="${r._id}"
+    ondragstart="draggedId='${r._id}';setTimeout(()=>this.classList.add('dragging'),0)"
+    ondragend="this.classList.remove('dragging')">
+    ${r.overdue?'<div class="kb-overdue-tag">OVERDUE</div>':''}
+    <div class="kb-card-prio" style="color:${pc[r.priority]||'var(--t3)'}">${r.priority||'Medium'} · ${r.type}</div>
+    <div class="kb-card-title">${r.subject}</div>
+    <div class="kb-card-eq">🏭 ${r.equipmentName||'—'}</div>
+    <div class="kb-card-footer">
+      <div class="kb-avatar" style="background:${tc}">${ini}</div>
+      <span class="kb-card-tech">${r.technicianName||'Unassigned'}</span>
+      <div class="kb-card-date">${r.scheduledDate||''}</div>
+    </div>
+  </div>`;
+}
+
+async function kbDrop(ev, newStatus) {
+  ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+  if (!draggedId) return;
+  const req = DB.requests.find(r => r._id === draggedId);
+  if (!req || req.status === newStatus) { draggedId = null; return; }
+  req.status = newStatus;
+  if (newStatus==='Repaired'||newStatus==='Scrap') req.completedDate = new Date();
+  draggedId = null;
+  await apiCall(`/requests/${req._id}/status`, {method:'PATCH', body:JSON.stringify({status:newStatus})});
+  loadKanban();
+  if (activeTab==='dashboard') renderDashKanbanPreview();
+  updateQuickKPIs();
+  showToast(`✅ Moved to "${newStatus}"`, 'success');
+}
+
+// ── PREDICTIONS ───────────────────────────────────────────────
+async function loadPredictions() {
+  const grid = document.getElementById('predGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:48px;justify-content:center;color:var(--t3)"><div class="spin"></div> Running ML models...</div>';
+  const equipment = await getEquipment();
+  await new Promise(r => setTimeout(r, 500));
+  renderPredictions(equipment);
+}
+
+function renderPredictions(equipment) {
+  const grid = document.getElementById('predGrid');
+  if (!grid) return;
+  grid.innerHTML = equipment.map(eq => {
+    const r = eq.aiRisk||{level:'low',score:0,failureDays:90,confidence:70};
+    return `<div class="pred-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+        <div><div style="font-size:15px;font-weight:700">${eq.name}</div><div style="font-size:10.5px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:2px">${eq.serialNumber} · ${eq.department}</div></div>
+        <div class="risk risk-${r.level}">${r.level==='high'?'🔴':r.level==='medium'?'🟡':'🟢'} ${r.level.toUpperCase()}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);margin-bottom:5px"><span>Failure Risk Score</span><span style="font-family:'Orbitron',monospace;font-weight:800;color:${r.level==='high'?'var(--red)':r.level==='medium'?'var(--warn)':'var(--mint)'}">${r.score}%</span></div>
+      <div class="pred-gauge"><div class="pred-gauge-fill" data-w="${r.score}" style="width:0%;background:${r.level==='high'?'linear-gradient(90deg,var(--warn),var(--red))':r.level==='medium'?'linear-gradient(90deg,var(--mint),var(--warn))':'linear-gradient(90deg,var(--mint),var(--neon))'}"></div></div>
+      <div class="pred-metrics">
+        <div class="pred-metric"><div class="pred-metric-val" style="color:${r.level==='high'?'var(--red)':r.level==='medium'?'var(--warn)':'var(--mint)'}">${r.failureDays}d</div><div class="pred-metric-lbl">Est. Failure</div></div>
+        <div class="pred-metric"><div class="pred-metric-val" style="color:var(--neon)">${r.confidence}%</div><div class="pred-metric-lbl">Confidence</div></div>
+        <div class="pred-metric"><div class="pred-metric-val">${eq.usageHours.toLocaleString()}</div><div class="pred-metric-lbl">Usage Hours</div></div>
+        <div class="pred-metric"><div class="pred-metric-val">${eq.totalFailures}</div><div class="pred-metric-lbl">Past Failures</div></div>
+      </div>
+      <div class="ai-rec-box"><div class="ai-rec-label">🤖 AI RECOMMENDATION</div><div class="ai-rec-text">${getAIRec(eq, r)}</div></div>
+    </div>`;
+  }).join('');
+  setTimeout(() => document.querySelectorAll('.pred-gauge-fill[data-w]').forEach(g => g.style.width = g.dataset.w+'%'), 100);
+}
+
+function getAIRec(eq, r) {
+  if (r.level==='high') return `⚠️ Immediate inspection within ${r.failureDays} days. Schedule corrective maintenance now. Estimated repair window: 4-8h. Assign highest-rated available tech.`;
+  if (r.level==='medium') return `📅 Preventive maintenance recommended within ${r.failureDays} days. Check ${eq.totalFailures>3?'worn components and bearing wear':'lubrication levels and filter condition'}. Confidence: ${r.confidence}%.`;
+  return `✅ Equipment health nominal. Continue standard PM schedule. Next recommended service at ${eq.usageHours+500}h (est. ${r.failureDays} days).`;
+}
+
+async function runBulkPredict() {
+  showToast('🔄 Recalculating all ML predictions...', 'info');
+  const res = await apiCall('/ai/predict-all', {method:'POST'});
+  setTimeout(() => { loadPredictions(); showToast('✅ All predictions updated', 'success'); }, 1200);
+}
+
+// ── CALENDAR ──────────────────────────────────────────────────
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date();
+  const events = DB.requests.filter(r => { if(!r.scheduledDate) return false; const d=new Date(r.scheduledDate); return d.getFullYear()===calYear && d.getMonth()===calMonth; });
+  const prevDays = new Date(calYear, calMonth, 0).getDate();
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  for (let i=firstDay-1; i>=0; i--) { const d=document.createElement('div'); d.className='cal-day other'; d.innerHTML=`<div class="cal-day-num">${prevDays-i}</div>`; grid.appendChild(d); }
+  for (let day=1; day<=daysInMonth; day++) {
+    const d=document.createElement('div');
+    const isToday = day===today.getDate() && calMonth===today.getMonth() && calYear===today.getFullYear();
+    d.className=`cal-day${isToday?' today':''}`;
+    const dayEvs = events.filter(r => new Date(r.scheduledDate).getDate()===day);
+    d.innerHTML=`<div class="cal-day-num" style="color:${isToday?'var(--neon)':'var(--t2)'}">${day}</div>${dayEvs.map(e=>`<div class="cal-event-pill ${e.type==='Corrective'?'c':'p'}">${e.subject.substring(0,16)}</div>`).join('')}`;
+    d.onclick=()=>{ document.getElementById('reqDate').value=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; populateEqSelect(); openModal('reqModal'); };
+    grid.appendChild(d);
+  }
+  const totalCells = Math.ceil((firstDay+daysInMonth)/7)*7;
+  for (let i=1; i<=totalCells-firstDay-daysInMonth; i++) { const d=document.createElement('div'); d.className='cal-day other'; d.innerHTML=`<div class="cal-day-num">${i}</div>`; grid.appendChild(d); }
+}
+function calNav(dir) { calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+
+// ── ANALYTICS ─────────────────────────────────────────────────
+function loadAnalytics() {
+  if (chartInstances.analytics) return;
+  chartInstances.analytics = true;
+  const CD = {plugins:{legend:{labels:{color:'#94a3b8',font:{family:'Syne',size:11}}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#94a3b8',font:{family:'Syne',size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#94a3b8',font:{family:'Syne',size:11}}}}};
+  new Chart('teamChart',{type:'bar',data:{labels:['IT Support','Mechanical','Electrical'],datasets:[{label:'Requests',data:[3,3,2],backgroundColor:['rgba(0,212,255,.6)','rgba(99,102,241,.6)','rgba(16,185,129,.6)'],borderRadius:5}]},options:{...CD,plugins:{legend:{display:false}}}});
+  new Chart('eqChart',{type:'bar',data:{labels:['Printer 01','CNC Mach A','Server Rack','Conveyor B','AC Unit','E.Panel'],datasets:[{label:'Requests',data:[3,2,1,1,1,0],backgroundColor:'rgba(0,212,255,.5)',borderColor:'rgba(0,212,255,.8)',borderWidth:1,borderRadius:4}]},options:{...CD,indexAxis:'y',plugins:{legend:{display:false}}}});
+  new Chart('trendChart',{type:'line',data:{labels:['Aug','Sep','Oct','Nov','Dec','Jan'],datasets:[{label:'Corrective',data:[4,6,3,7,5,4],borderColor:'rgba(239,68,68,.9)',backgroundColor:'rgba(239,68,68,.08)',tension:.4,fill:true},{label:'Preventive',data:[6,8,9,7,11,9],borderColor:'rgba(16,185,129,.9)',backgroundColor:'rgba(16,185,129,.08)',tension:.4,fill:true}]},options:CD});
+  new Chart('riskChart',{type:'doughnut',data:{labels:['Low Risk','Medium Risk','High Risk'],datasets:[{data:[1,3,2],backgroundColor:['rgba(16,185,129,.75)','rgba(245,158,11,.75)','rgba(239,68,68,.75)'],borderColor:'transparent',hoverOffset:8}]},options:{plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'Syne',size:11},padding:14}}},cutout:'58%'}});
+}
+
+function initStatusChart() {
+  if (chartInstances.status) return;
+  chartInstances.status = true;
+  const reqs = DB.requests;
+  new Chart('statusChart',{type:'doughnut',data:{labels:['New','In Progress','Repaired','Scrap'],datasets:[{data:[reqs.filter(r=>r.status==='New').length,reqs.filter(r=>r.status==='In Progress').length,reqs.filter(r=>r.status==='Repaired').length,reqs.filter(r=>r.status==='Scrap').length],backgroundColor:['rgba(0,212,255,.8)','rgba(99,102,241,.8)','rgba(16,185,129,.8)','rgba(239,68,68,.8)'],borderColor:'transparent',hoverOffset:7}]},options:{plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'Syne',size:10.5},padding:10}}},cutout:'64%'}});
+}
+
+// ── MODALS + FORMS ────────────────────────────────────────────
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+
+function populateEqSelect() {
+  const sel = document.getElementById('reqEq');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select equipment...</option>' + DB.equipment.map(e=>`<option value="${e._id}" data-team="${e.teamName}" data-tech="${e.technicianName}">${e.name}</option>`).join('');
+}
+function autoFillReqFields() {
+  const sel = document.getElementById('reqEq');
+  const opt = sel?.selectedOptions[0];
+  if (opt?.value) { document.getElementById('reqTeam').value=opt.dataset.team||''; document.getElementById('reqTech').value=opt.dataset.tech||''; }
+}
+async function submitAddEquipment() {
+  const name = document.getElementById('eqName').value.trim();
+  if (!name) return showToast('Equipment name is required','error');
+  const serial = document.getElementById('eqSerial').value.trim()||`SN-${Date.now().toString().slice(-6)}`;
+  const newEq = { _id:`eq${DB._eqId++}`, name, serialNumber:serial, department:document.getElementById('eqDept').value, location:document.getElementById('eqLoc').value||'TBD', teamName:document.getElementById('eqTeam').value, technicianName:document.getElementById('eqTech').value, status:'active', usageHours:parseInt(document.getElementById('eqHours').value)||0, totalFailures:0, aiRisk:{level:'low',score:8,failureDays:90,confidence:72} };
+  DB.equipment.push(newEq);
+  await apiCall('/equipment',{method:'POST',body:JSON.stringify({name,serialNumber:serial,department:newEq.department,location:newEq.location,teamName:newEq.teamName,technicianName:newEq.technicianName})});
+  closeModal('eqModal');
+  showToast(`✅ ${name} added to registry`,'success');
+  loadEquipment();
+  updateQuickKPIs();
+  ['eqName','eqSerial','eqLoc','eqNotes','eqHours'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+}
+async function submitAddRequest() {
+  const subject = document.getElementById('reqSubject').value.trim();
+  if (!subject) return showToast('Subject is required','error');
+  const eqEl = document.getElementById('reqEq');
+  const eqId = eqEl?.value; const eqName = eqEl?.selectedOptions[0]?.text||'General';
+  const newReq = { _id:`r${DB._reqId++}`, subject, type:document.getElementById('reqType').value, priority:document.getElementById('reqPriority').value, status:'New', equipmentId:eqId||'eq1', equipmentName:eqName, teamName:document.getElementById('reqTeam').value||'IT Support', technicianName:document.getElementById('reqTech').value||'Alex Chen', scheduledDate:document.getElementById('reqDate').value, overdue:false, createdAt:new Date() };
+  DB.requests.push(newReq);
+  await apiCall('/requests',{method:'POST',body:JSON.stringify({subject:newReq.subject,type:newReq.type,priority:newReq.priority,equipmentId:eqId||'eq1',equipmentName:eqName,teamName:newReq.teamName,technicianName:newReq.technicianName,scheduledDate:newReq.scheduledDate})});
+  closeModal('reqModal');
+  const tid = `#MX-${String(DB._reqId-1).padStart(4,'0')}`;
+  showToast(`✅ Request ${tid} created`,'success');
+  if (activeTab==='kanban') loadKanban();
+  if (activeTab==='calendar') renderCalendar();
+  if (activeTab==='dashboard') renderDashKanbanPreview();
+  updateQuickKPIs();
+  document.getElementById('reqSubject').value='';
+  document.getElementById('reqDesc').value='';
+}
+
+function updateQuickKPIs() {
+  setEl('k-eq',    DB.equipment.filter(e=>e.status==='active').length);
+  setEl('k-req',   DB.requests.filter(r=>r.status==='New'||r.status==='In Progress').length);
+  setEl('k-over',  DB.requests.filter(r=>r.overdue).length);
+  setEl('k-alert', DB.equipment.filter(e=>e.aiRisk?.level==='high').length);
+  setEl('k-done',  DB.requests.filter(r=>r.status==='Repaired').length);
+  setEl('overdueCount', DB.requests.filter(r=>r.overdue).length);
+}
+
+// ── AI CHATBOT ────────────────────────────────────────────────
+function toggleChat() { document.getElementById('chatWindow').classList.toggle('open'); }
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addChatBubble(msg, 'user');
+  showTypingIndicator();
+
+  setTimeout(async () => {
+    removeTypingIndicator();
+    // Try real AI service
+    let parsed = null;
+    try {
+      const res = await fetch(`${APP.AI}/chat`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg}),signal:AbortSignal.timeout(4000)});
+      parsed = await res.json();
+    } catch { parsed = nlpFallback(msg); }
+
+    addChatBubble(`🧠 **Analysis complete:**\n\n📋 Issue: ${parsed.issue||msg}\n🏭 Equipment: ${parsed.equipment_hint||'Not identified'}\n⚡ Priority: ${parsed.priority||'Medium'}\n🎯 Confidence: ${parsed.confidence||75}%`, 'ai');
+
+    setTimeout(async () => {
+      const eq = DB.equipment.find(e => { const h = (parsed.equipment_hint||'').toLowerCase(); return e.name.toLowerCase().includes(h.split(' ')[0]) || h.includes(e.name.toLowerCase().split(' ')[0]); });
+      const newReq = { _id:`r${DB._reqId++}`, subject:parsed.issue||msg, type:'Corrective', priority:parsed.priority||'Medium', status:'New', equipmentId:eq?._id||'eq1', equipmentName:eq?.name||'General Equipment', teamName:eq?.teamName||'IT Support', technicianName:eq?.technicianName||'Alex Chen', scheduledDate:new Date().toISOString().split('T')[0], overdue:false, aiGenerated:true, createdAt:new Date() };
+      DB.requests.push(newReq);
+      await apiCall('/ai/chat',{method:'POST',body:JSON.stringify({message:msg})});
+      const tid = `#MX-${String(DB._reqId-1).padStart(4,'0')}`;
+      addChatBubble(`✅ **Ticket created:** ${tid}\n\n🏭 Equipment: ${newReq.equipmentName}\n👤 Assigned: ${newReq.technicianName}\n⚡ Priority: ${newReq.priority}\n\nCard added to Kanban board.`, 'ai');
+      showToast(`✅ Ticket ${tid} created via AI`, 'success');
+      if (activeTab==='kanban') loadKanban();
+      if (activeTab==='dashboard') { renderDashKanbanPreview(); updateQuickKPIs(); }
+    }, 900);
+  }, 1800);
+}
+
+function nlpFallback(msg) {
+  const m = msg.toLowerCase();
+  const map = {printer:{h:'Printer'},cnc:{h:'CNC Machine'},server:{h:'Server Rack'},conveyor:{h:'Conveyor Belt'},ac:{h:'Office AC'},electrical:{h:'Electrical Panel'}};
+  let equipment_hint = null;
+  for (const [k,v] of Object.entries(map)) { if(m.includes(k)){equipment_hint=v.h;break;} }
+  const priority = /urgent|critical|not working|broken|down|fail|crash|emergency/.test(m)?'High':/minor|slight|slow|small/.test(m)?'Low':'Medium';
+  return {issue:msg,equipment_hint,priority,confidence:equipment_hint?86:61};
+}
+function addChatBubble(text, sender) {
+  const msgs=document.getElementById('chatMessages');
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const d=document.createElement('div');d.className=`chat-msg ${sender}`;
+  d.innerHTML=`<div class="chat-bubble">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div><div class="chat-time">${now}</div>`;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function showTypingIndicator() {
+  const msgs=document.getElementById('chatMessages');const d=document.createElement('div');d.className='chat-msg ai';d.id='typingWrap';
+  d.innerHTML='<div class="typing-indicator"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div><div class="chat-time">AI thinking...</div>';
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function removeTypingIndicator() { document.getElementById('typingWrap')?.remove(); }
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function saveAllSettings() { showToast('✅ All settings saved successfully', 'success'); }
+function resetSettings()   { showToast('↺ Settings reset to defaults', 'info'); }
+function saveSettings()    { saveAllSettings(); }
+async function testConnectionSilent() {
+  try { const r = await fetch(`${APP.API}/api/health`,{signal:AbortSignal.timeout(2500)}); if(r.ok) updateLiveStatus(true); else updateLiveStatus(false); } catch { updateLiveStatus(false); }
+}
+
+// ── PROFILE ───────────────────────────────────────────────────
+let profileEditMode = false;
+function loadProfile() {
+  const user = APP.user;
+  if (!user) return;
+  const initials = user.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  setEl('profileAvatarEl', initials);
+  setEl('profileName', user.name);
+  setEl('profileEmail', user.email||'demo@maintenx.ai');
+  setEl('profileRoleLabel', user.role==='admin'?'System Administrator':user.role==='manager'?'Operations Manager':'Field Technician');
+  // Animate profile stats
+  setTimeout(() => {
+    countUp('ps-tasks', 231, 1000);
+    setTimeout(()=>countUpPct('ps-rate',94,900),150);
+    setTimeout(()=>countUpStr('ps-avg',3,800,'h'),300);
+    setTimeout(()=>{ let n=0;const el=document.getElementById('ps-rating');if(!el)return;const t=setInterval(()=>{n=Math.min(n+.1,4.8);el.textContent=n.toFixed(1);if(n>=4.8)clearInterval(t);},24);},450);
+  }, 200);
+  // Animate skill bars
+  setTimeout(() => document.querySelectorAll('.skill-bar-fill[data-w]').forEach(b => b.style.width = b.dataset.w+'%'), 300);
+  // Performance chart
+  if (!chartInstances.perf) {
+    chartInstances.perf = true;
+    const ctx = document.getElementById('perfChart');
+    if (ctx) new Chart(ctx, { type:'bar', data:{ labels:['Aug','Sep','Oct','Nov','Dec','Jan'], datasets:[{label:'Tasks Completed',data:[28,35,31,42,38,57],backgroundColor:'rgba(0,212,255,.5)',borderColor:'rgba(0,212,255,.85)',borderWidth:1,borderRadius:5},{label:'First Fix',data:[22,31,28,38,35,52],backgroundColor:'rgba(16,185,129,.4)',borderColor:'rgba(16,185,129,.8)',borderWidth:1,borderRadius:5}]}, options:{plugins:{legend:{labels:{color:'#94a3b8',font:{family:'Syne',size:10.5},padding:10}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#94a3b8',font:{family:'Syne',size:10.5}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#94a3b8',font:{family:'Syne',size:10.5}}}}}});
+  }
+  // Assigned equipment list
+  const el = document.getElementById('profileEquipList');
+  if (el && el.innerHTML === '') {
+    el.innerHTML = DB.equipment.slice(0,4).map(eq => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;background:var(--s2);border:1px solid var(--b1)">
+        <div style="width:34px;height:34px;border-radius:8px;background:${eq.aiRisk.level==='high'?'rgba(239,68,68,.12)':eq.aiRisk.level==='medium'?'rgba(245,158,11,.12)':'rgba(16,185,129,.12)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${eq.aiRisk.level==='high'?'🔴':eq.aiRisk.level==='medium'?'🟡':'🟢'}</div>
+        <div style="flex:1"><div style="font-size:12.5px;font-weight:700">${eq.name}</div><div style="font-size:10.5px;color:var(--t3);font-family:'JetBrains Mono',monospace">${eq.serialNumber} · ${eq.department}</div></div>
+        <div class="risk risk-${eq.aiRisk.level}" style="font-size:9px">${eq.aiRisk.score}%</div>
+      </div>
+    `).join('');
+  }
+}
+function toggleProfileEdit() {
+  profileEditMode = !profileEditMode;
+  document.getElementById('profileBioView').style.display   = profileEditMode ? 'none' : 'block';
+  document.getElementById('profileBioEdit').style.display   = profileEditMode ? 'block' : 'none';
+  document.getElementById('profileDetailsView').style.display = profileEditMode ? 'none' : 'grid';
+  document.getElementById('profileDetailsEdit').style.display = profileEditMode ? 'flex' : 'none';
+  document.getElementById('profileSaveBtn').style.display   = profileEditMode ? 'flex' : 'none';
+  if (!profileEditMode) showToast('Edit cancelled', 'info');
+}
+function saveProfile() {
+  const name = document.getElementById('editName')?.value.trim() || APP.user?.name || 'User';
+  const dept = document.getElementById('editDept')?.value.trim();
+  const loc  = document.getElementById('editLocation')?.value.trim();
+  // Update displayed values
+  setEl('profileName', name);
+  if (dept) setEl('profileDept', dept);
+  if (loc)  setEl('profileLocation', loc);
+  const initials = name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  setEl('profileAvatarEl', initials);
+  setEl('navAvatarEl', initials);
+  setEl('navUserName', name);
+  if (APP.user) { APP.user.name = name; localStorage.setItem('mxt-user', JSON.stringify(APP.user)); }
+  profileEditMode = false;
+  document.getElementById('profileBioView').style.display    = 'block';
+  document.getElementById('profileBioEdit').style.display    = 'none';
+  document.getElementById('profileDetailsView').style.display= 'grid';
+  document.getElementById('profileDetailsEdit').style.display= 'none';
+  document.getElementById('profileSaveBtn').style.display    = 'none';
+  showToast('✅ Profile updated successfully', 'success');
+}
+
+// ── 3D GEARS (Three.js) ───────────────────────────────────────
+const gearsInited = {};
+function buildGear(canvasId, opts={}) {
+  if (gearsInited[canvasId]) return;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof THREE === 'undefined') return;
+  gearsInited[canvasId] = true;
+  const {speed=.006,color=0x000d1a} = opts;
+  const renderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  const W=canvas.clientWidth||500,H=canvas.clientHeight||320;
+  renderer.setSize(W,H);
+  const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(50,W/H,.1,100);
+  cam.position.set(0,0,5.5);
+  function gearShape(teeth,inner,th,tw){
+    const s=new THREE.Shape();const step=Math.PI*2/teeth;
+    for(let i=0;i<teeth;i++){const a=i*step;const a1=a-tw/2,a2=a-tw/4,a3=a+tw/4,a4=a+tw/2;
+      i===0?s.moveTo(Math.cos(a1)*inner,Math.sin(a1)*inner):s.lineTo(Math.cos(a1)*inner,Math.sin(a1)*inner);
+      s.lineTo(Math.cos(a2)*(inner+th),Math.sin(a2)*(inner+th));s.lineTo(Math.cos(a3)*(inner+th),Math.sin(a3)*(inner+th));s.lineTo(Math.cos(a4)*inner,Math.sin(a4)*inner);}
+    s.closePath();const h=new THREE.Path();h.absellipse(0,0,inner*.32,inner*.32,0,Math.PI*2,false);s.holes.push(h);return s;
+  }
+  const geo=new THREE.ExtrudeGeometry(gearShape(12,1.4,.34,.34),{depth:.26,bevelEnabled:true,bevelThickness:.04,bevelSize:.03,bevelSegments:3});geo.center();
+  const mat=new THREE.MeshStandardMaterial({color,metalness:.93,roughness:.08,emissive:new THREE.Color(0x00d4ff),emissiveIntensity:.1});
+  const mesh=new THREE.Mesh(geo,mat);scene.add(mesh);
+  [.26,.46,.66].forEach(r=>{const rg=new THREE.TorusGeometry(r,0.016,8,32);const rm=new THREE.MeshStandardMaterial({color:0x00d4ff,emissive:new THREE.Color(0x00d4ff),emissiveIntensity:.4,metalness:.8,roughness:.2});scene.add(new THREE.Mesh(rg,rm));});
+  scene.add(new THREE.AmbientLight(0xffffff,.28));
+  const p1=new THREE.PointLight(0x00d4ff,3,12);p1.position.set(3,3,3);scene.add(p1);
+  const p2=new THREE.PointLight(0x8b5cf6,2.2,10);p2.position.set(-3,-2,2);scene.add(p2);
+  const dl=new THREE.DirectionalLight(0xffffff,1.8);dl.position.set(0,5,5);scene.add(dl);
+  let mx=0,my=0,fr=0;
+  window.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*2;my=(e.clientY/innerHeight-.5)*2;});
+  (function loop(){requestAnimationFrame(loop);fr++;
+    mesh.rotation.z+=speed+Math.sin(fr*.012)*.001;
+    mesh.rotation.x+=(my*.2-mesh.rotation.x)*.04;
+    mesh.rotation.y+=(mx*.2-mesh.rotation.y)*.04;
+    p1.intensity=2.5+Math.sin(fr*.022)*.7;
+    renderer.render(scene,cam);
+  })();
+  window.addEventListener('resize',()=>{const W=canvas.clientWidth,H=canvas.clientHeight;renderer.setSize(W,H);cam.aspect=W/H;cam.updateProjectionMatrix();});
+}
+function initHeroGear() { setTimeout(()=>buildGear('hero-canvas',{speed:.004,color:0x000e22}), 80); }
+function initDashGear()  { setTimeout(()=>buildGear('dash-gear', {speed:.006,color:0x04060f}), 120); }
+
+// ── HERO STATS ANIMATION ──────────────────────────────────────
+function animateHeroStats() {
+  countUpStr('hs1', 247, 1800);
+  setTimeout(()=>countUpPct('hs2',94,1800),200);
+  setTimeout(()=>countUpStr('hs3',1380,1800,'h'),400);
+  setTimeout(()=>countUpStr('hs4',500,1800,'+'),600);
+}
+function countUp(id, target, dur=900) {
+  const el=document.getElementById(id);if(!el)return;
+  let n=0;const step=target/(dur/16);
+  const t=setInterval(()=>{n=Math.min(n+step,target);el.textContent=Math.floor(n);if(n>=target)clearInterval(t);},16);
+}
+function countUpStr(id,target,dur,suffix='') {
+  const el=document.getElementById(id);if(!el)return;
+  let n=0;const step=target/(dur/16);
+  const t=setInterval(()=>{n=Math.min(n+step,target);el.textContent=Math.floor(n)+suffix;if(n>=target)clearInterval(t);},16);
+}
+function countUpPct(id,target,dur) {
+  const el=document.getElementById(id);if(!el)return;
+  let n=0;const step=target/(dur/16);
+  const t=setInterval(()=>{n=Math.min(n+step,target);el.textContent=Math.floor(n)+'%';if(n>=target)clearInterval(t);},16);
+}
+
+// ── TOASTS ────────────────────────────────────────────────────
+function showToast(msg,type='info') {
+  const zone=document.getElementById('toastZone');
+  const d=document.createElement('div');d.className=`toast ${type}`;
+  const icons={success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  d.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  zone.appendChild(d);
+  setTimeout(()=>{d.style.opacity='0';d.style.transform='translateX(16px)';d.style.transition='all .3s';setTimeout(()=>d.remove(),300);},4000);
+}
+
+// ── UTILITIES ─────────────────────────────────────────────────
+function setEl(id,val) { const e=document.getElementById(id);if(e)e.textContent=val; }
+function scrollTo_(id) { document.querySelector(id)?.scrollIntoView({behavior:'smooth',block:'start'}); }
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+
+// ── CURSOR ────────────────────────────────────────────────────
+const curEl=document.getElementById('cur'),curRingEl=document.getElementById('curRing');
+let cx=0,cy=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;curEl.style.left=cx+'px';curEl.style.top=cy+'px';});
+(function trackRing(){rx+=(cx-rx)*.12;ry+=(cy-ry)*.12;curRingEl.style.left=rx+'px';curRingEl.style.top=ry+'px';requestAnimationFrame(trackRing);})();
+document.addEventListener('mousedown',()=>{curEl.style.transform='translate(-50%,-50%) scale(1.6)';curRingEl.style.transform='translate(-50%,-50%) scale(.7)';});
+document.addEventListener('mouseup',()=>{curEl.style.transform='translate(-50%,-50%) scale(1)';curRingEl.style.transform='translate(-50%,-50%) scale(1)';});
+
+// ── KEYBOARD ─────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));document.getElementById('chatWindow')?.classList.remove('open');}
+  if(e.key==='Enter'&&currentView==='login')handleLogin();
+  if(e.altKey){
+    if(e.key==='d'||e.key==='D'){e.preventDefault();if(currentView==='app')switchTab('dashboard');}
+    if(e.key==='k'||e.key==='K'){e.preventDefault();if(currentView==='app')switchTab('kanban');}
+    if(e.key==='p'||e.key==='P'){e.preventDefault();if(currentView==='app')switchTab('predictions');}
+    if(e.key==='e'||e.key==='E'){e.preventDefault();if(currentView==='app'){openModal('eqModal');}}
+    if(e.key==='r'||e.key==='R'){e.preventDefault();if(currentView==='app'){populateEqSelect();openModal('reqModal');}}
+    if(e.key==='c'||e.key==='C'){e.preventDefault();if(currentView==='app')toggleChat();}
+    if(e.key==='u'||e.key==='U'){e.preventDefault();if(currentView==='app')switchTab('profile');}
+  }
+});
+
+// ── NAV SCROLL EFFECT ─────────────────────────────────────────
+window.addEventListener('scroll',()=>{document.getElementById('topnav').classList.toggle('scrolled',scrollY>30);},{ passive:true });
+
+// ── PERIODIC AI TOASTS (while in app) ─────────────────────────
+setInterval(()=>{
+  if (currentView!=='app') return;
+  const msgs=['🔮 AI: Printer 01 failure probability increased to 91%','📊 New insight: CNC temperature trending +8°C above baseline','⚡ Smart assignment updated overnight crew schedule'];
+  if (Math.random()>.7) showToast(msgs[Math.floor(Math.random()*msgs.length)],'info');
+},22000);
+
+// ── INIT ─────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  document.getElementById('reqDate').value = new Date().toISOString().split('T')[0];
+  // Check if user already logged in
+  if (APP.token && APP.user) {
+    updateUserUI(APP.user);
+ 

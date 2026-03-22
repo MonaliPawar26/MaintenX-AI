@@ -1,0 +1,68 @@
+name: MaintenX CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── BACKEND TESTS ──────────────────────────────────────────
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test -- --passWithNoTests
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/maintenx_test
+          JWT_SECRET: test_secret_for_ci_only
+
+  # ── AI SERVICE TESTS ───────────────────────────────────────
+  test-ai-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - run: pytest tests/ -v --tb=short
+
+  # ── DOCKER BUILD CHECK ─────────────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-ai-service]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t maintenx-backend:ci ./backend
+      - name: Build AI service image
+        run: docker build -t maintenx-ai:ci ./ai-service
+
+  # ── DEPLOY TO PRODUCTION (main branch only) ────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy notification
+        run: echo "🚀 Deploy to production — configure your deployment steps here"
+        # Add your deployment steps:
+        # - SSH to server and docker compose pull && docker compose up -d
+        # - Or push to container registry (ECR, GCR, DockerHub)
+        # - Or deploy to cloud platform (Railway, Render, Fly.io, AWS ECS)
